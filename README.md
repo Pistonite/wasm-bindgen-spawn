@@ -1,4 +1,10 @@
 # wasm-bindgen-spawn
+
+![Build Badge](https://img.shields.io/github/check-runs/Pistonite/wasm-bindgen-spawn/main)
+![Version Badge](https://img.shields.io/crates/v/wasm-bindgen-spawn)
+![License Badge](https://img.shields.io/github/license/Pistonite/wasm-bindgen-spawn)
+![Issue Badge](https://img.shields.io/github/issues/Pistonite/wasm-bindgen-spawn)
+
 A Web Worker based multithreading library for Rust and WebAssembly.
 
 This uses the WebAssembly [threads proposal](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md)
@@ -17,14 +23,14 @@ will remain on version `0.0.x` until all features required are in stable Rust,
 standardized in WASM, and baseline widely available across browsers.
 
 ## Examples
-The [`examples`](./examples) directory contains a full example using Vite. You
-can see the demo [here](https://pistonite.github.io/wasm-bindgen-spawn).
+The [`examples`](https://github.com/Pistonite/wasm-bindgen-spawn/tree/main/example) directory 
+on GitHub contains a full example using Vite. 
 
 See [ThreadCreator](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.ThreadCreator.html) for the main API.
 
 ## Background/Design
 I wrote a blog on how and why this library is designed this way,
-and what the limitations are. You can read it [here](https://pistonite.github.io/wasm-bindgen-spawn/blog).
+and what the limitations are. You can read it [here](https://pistonite.github.io/wasm-bindgen-spawn).
 
 ## Requirements
 
@@ -41,7 +47,7 @@ Cross-Origin-Opener-Policy: same-origin
 ```
 
 You can check if the document is in a cross-origin isolated context by running this in the console:
-```js
+```javascript
 self.crossOriginIsolated
 ```
 

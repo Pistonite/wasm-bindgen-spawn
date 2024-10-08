@@ -1,8 +1,7 @@
 # example
-The example is live at https://pistonite.github.io/wasm-bindgen-spawn
-
-If you want to build/run it locally:
+To run the example, clone the repo, then:
 ```sh
+cd example
 npm install
 npm run wasm
 npm run dev

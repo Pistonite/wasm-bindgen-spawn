@@ -4,7 +4,7 @@
 This is a design document/blog for my implementation of `spawn` in Rust
 and WebAssembly with `wasm-bindgen`. Please see the [GitHub README](https://github.com/Pistonite/wasm-bindgen-spawn)
 or the documentation on crates.io to see how to use this library,
-or check out the [examples](https://pistonite.github.io/wasm-bindgen-spawn) and the [source code](https://github.com/Pistonite/wasm-bindgen-spawn/blob/main/example) for the examples.
+or check out the [examples](https://github.com/Pistonite/wasm-bindgen-spawn/blob/main/example) for the examples.
 
 ## Motivation
 The dream is to be able to use `std::thread::spawn` in WebAssembly and things "just work".
