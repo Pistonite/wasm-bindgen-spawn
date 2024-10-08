@@ -1,8 +1,9 @@
 # wasm-bindgen-spawn
 A Web Worker based multithreading library for Rust and WebAssembly.
 
-This uses the WebAssembly [threads proposal](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md), which is currently in [phase 4](https://webassembly.org/features/) and available in Chrome, Firefox, Safari and Node.js
+This uses the WebAssembly [threads proposal](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md)
 and shared memory to communicate between workers (once they are started), instead of `postMessage`.
+The threads proposal is currently in [phase 4](https://webassembly.org/features/) and available in Chrome, Firefox, Safari and Node.js
 
 At the current stage, this is the closest thing to `std::thread::spawn`
 that "Just Works" for `wasm32-unknown-unknown` target. You can:
@@ -16,7 +17,7 @@ will remain on version `0.0.x` until all features required are in stable Rust,
 standardized in WASM, and baseline widely available across browsers.
 
 ## Examples
-The [`examples`](./examples) directory contains a full Vite example. You
+The [`examples`](./examples) directory contains a full example using Vite. You
 can see the demo [here](https://pistonite.github.io/wasm-bindgen-spawn).
 
 See [ThreadCreator](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.ThreadCreator.html) for the main API.
@@ -52,13 +53,13 @@ Read the full article for more details on the implications of Cross-Origin Isola
     echo "nightly" > rust-toolchain
     ```
 2. Add the following to `.cargo/config.toml`
-```toml
-[target.wasm32-unknown-unknown]
-rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
+    ```toml
+    [target.wasm32-unknown-unknown]
+    rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
 
-[unstable]
-build-std = ["panic_abort", "std"]
-```
+    [unstable]
+    build-std = ["panic_abort", "std"]
+    ```
 
 ### `wasm-pack` Target
 Currently, this library only supports the `no-modules` target:

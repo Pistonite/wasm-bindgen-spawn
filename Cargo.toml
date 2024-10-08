@@ -8,11 +8,15 @@ license = "MIT"
 authors = ["Pistonight <pistonknight@outlook.com>"]
 keywords = ["WASM", "threads", "atomics", "wasm-bindgen", "shared-memory"]
 categories = ["web-programming", "wasm"]
-exclude = [
-    ".github/**/*",
-    "example/**/*",
-    "docs/**/*",
-    "src/js/**/*",
+include = [
+    "/.cargo/config.toml",
+    "/.gitignore",
+    "src/js/createDispatcher.min.js",
+    "src/**/*.rs",
+    "Cargo.toml",
+    "LICENSE",
+    "README.md",
+    "rust-toolchain",
 ]
 
 [dependencies]

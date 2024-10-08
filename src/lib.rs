@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics"), not(doc)))]
 compile_error!(
     "Some target features are not enabled. Please read the README and set the right rustflags"
 );
@@ -19,18 +19,22 @@ type BoxClosure = Box<dyn FnOnce() -> BoxValue + Send + UnwindSafe + 'static>;
 type BoxValue = Box<dyn Send + 'static>;
 type ValueSender = oneshot::Sender<Result<BoxValue, JoinError>>;
 type ValueReceiver = oneshot::Receiver<Result<BoxValue, JoinError>>;
+
 type DispatchPayload = (usize, BoxClosure, ValueSender);
 type DispatchSender = mpsc::Sender<DispatchPayload>;
 type DispatchReceiver = mpsc::Receiver<DispatchPayload>;
+
 type SignalSender = oneshot::Sender<()>;
 type SignalReceiver = oneshot::Receiver<()>;
 
+/// Error when joining a thread with a [`JoinHandle`]
 #[derive(Debug, thiserror::Error)]
 pub enum JoinError {
     #[error("WASM thread {0} panicked")]
     Panic(usize),
 }
 
+/// Error when spawning a thread with [`ThreadCreator::spawn`]
 #[derive(Debug, thiserror::Error)]
 pub enum SpawnError {
     #[error("Cannot spawn WASM thread because the dispatcher has disconnected")]
@@ -46,17 +50,18 @@ extern "C" {
     static DISPATCH_POLL_WORKER: JsValue;
 }
 
-/// Handle for a dedicated Web Worker for dispatching new threads. Please
-/// see below for example and how to avoid potential deadlocks.
+/// Handle for a dedicated Web Worker for dispatching new threads.
+///
+/// Please see below for example and how to avoid potential deadlocks.
 ///
 /// # Example
 /// Suppose your WASM package is built with `wasm-pack` using the following command:
 /// ```sh
-/// wasm-pack build -t no-modules --out.dir ./pkg
+/// wasm-pack build -t no-modules --out-dir ./pkg
 /// ```
 /// which should produce `pkg/your_package_bg.wasm` and `pkg/your_package.js`.
 ///
-/// Then you can create a `ThreadCreator` with the following code:
+/// Then you can create a `ThreadCreator` with:
 /// ```no_run
 /// use wasm_bindgen::prelude::*;
 /// use wasm_bindgen_spawm::ThreadCreator;
@@ -107,7 +112,12 @@ extern "C" {
 ///     Ok(())   
 /// }
 /// ```
-/// Note that only `ready` requires `await`, and not `spawn` or `join`. You can also
+/// Note that only `ready` requires `await`, and not `spawn` or `join`. This is because
+/// once the dispatcher is ready, shared memory is used for sending the spawn payload
+/// to the dispatcher instead of `postMessage`. This also means you only need this async step
+/// once when creating the `ThreadCreator`. You can write the rest of the code without `async`.
+///
+/// You can also
 /// disable the `async` feature and use [`ready_promise`](Self::ready_promise) to avoid depending on `wasm-bindgen-futures`
 ///
 /// # Joining threads
@@ -155,6 +165,7 @@ extern "C" {
 ///
 ///     handle.join().unwrap();
 /// }
+/// ```
 pub struct ThreadCreator {
     next_id: AtomicUsize,
     /// Promise for if the dispatcher is ready
@@ -247,6 +258,7 @@ impl ThreadCreator {
     }
 }
 
+/// Handle for joining a thread
 pub struct JoinHandle<T: Send + 'static> {
     id: usize,
     recv: ValueReceiver,
@@ -254,6 +266,15 @@ pub struct JoinHandle<T: Send + 'static> {
 }
 
 impl<T: Send + 'static> JoinHandle<T> {
+    /// Join the thread. Block the current thread until the thread is finished.
+    ///
+    /// Returns the value returned by the thread closure. If the thread panicked,
+    /// this returns a [`JoinError`].
+    ///
+    /// # Unwind and Poisoning
+    /// Note that `wasm32-unknown-unknown` target does not support unwinding yet.
+    /// This means safety mechanisms like poisoning are not available. Panicking
+    /// while holding a lock will not release the lock and will likely produce a dead lock.
     pub fn join(self) -> Result<T, JoinError> {
         // recv() will only error if somehow the thread terminated without sending a value
         let value = self.recv.recv().map_err(|_| JoinError::Panic(self.id))?;
@@ -274,6 +295,7 @@ fn make_closure<F: FnOnce() -> BoxValue + Send + 'static + UnwindSafe>(
     NonNull::from(Box::leak(Box::new(boxed)))
 }
 
+#[doc(hidden)]
 #[wasm_bindgen]
 pub fn __worker_main(f: NonNull<BoxClosure>, start: NonNull<SignalSender>) -> NonNull<BoxValue> {
     // signal the dispatcher that the worker is now started, and is safe to block
@@ -284,6 +306,7 @@ pub fn __worker_main(f: NonNull<BoxClosure>, start: NonNull<SignalSender>) -> No
     unsafe { NonNull::new_unchecked(value_ptr) }
 }
 
+#[doc(hidden)]
 #[wasm_bindgen]
 pub fn __worker_send(id: usize, send: NonNull<ValueSender>, value: Option<NonNull<BoxValue>>) {
     let send_ptr = send.as_ptr();
@@ -299,6 +322,7 @@ pub fn __worker_send(id: usize, send: NonNull<ValueSender>, value: Option<NonNul
     }
 }
 
+#[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_start(start: NonNull<SignalSender>) {
     let start_ptr = start.as_ptr();
@@ -306,6 +330,7 @@ pub fn __dispatch_start(start: NonNull<SignalSender>) {
     let _ = start.send(());
 }
 
+#[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_recv(recv: NonNull<DispatchReceiver>) -> Option<Vec<JsValue>> {
     // cast as reference so we don't drop it
@@ -328,6 +353,7 @@ pub fn __dispatch_recv(recv: NonNull<DispatchReceiver>) -> Option<Vec<JsValue>> 
     Some(value_vec)
 }
 
+#[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_poll_worker(start_recv: NonNull<SignalReceiver>) -> bool {
     if unsafe { start_recv.as_ref() }.try_recv().is_ok() {
@@ -339,6 +365,7 @@ pub fn __dispatch_poll_worker(start_recv: NonNull<SignalReceiver>) -> bool {
     }
 }
 
+#[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_drop(recv: NonNull<mpsc::Receiver<BoxClosure>>) {
     let recv: Box<mpsc::Receiver<BoxClosure>> = unsafe { Box::from_raw(recv.as_ptr()) };

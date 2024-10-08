@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "wasm": "wasm-pack build -t no-modules --out-dir public/pkg --profiling",
+    "wasm": "wasm-pack build -t no-modules --out-dir public/pkg --profiling --no-pack",
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "prettier": "prettier './**/*.{ts,tsx,json,js,jsx,cjs,css}' --write"
+    "prettier": "prettier './**/*.{ts,tsx,json,js,jsx,cjs,css}'"
   },
   "dependencies": {
     "react": "^18.3.1",

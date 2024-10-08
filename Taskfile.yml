@@ -1,10 +1,24 @@
 version: '3'
 
+includes:
+  example:
+    aliases: [ex]
+    taskfile: ./example
+    dir: ./example
+
+
 tasks:
-  generate:
+  build:
+    desc: Incrementally dev build
     cmds:
-    - txtpp src/createDispatcher.js
-    - cd example && npm run wasm
+      - txtpp src/js/createDispatcher.min.js
+      - cd example && npm run wasm
+
+  example:
+    desc: Build the example into docs folder
+    cmds:
+      - task: ex:build
+      - cp -r example/dist/* docs/
 
   check:
     desc: Check for issues
@@ -28,3 +42,5 @@ tasks:
   prettier:
     cmds:
       - npx prettier "./src/js/*.js" --tab-width 4 --end-of-line auto {{.PRETTIER_ARGS}}
+
+
