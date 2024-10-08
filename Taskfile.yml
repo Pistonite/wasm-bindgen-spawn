@@ -29,6 +29,7 @@ tasks:
         vars:
           PRETTIER_ARGS: --check
       - txtpp verify src -r
+      - task: ex:check
 
   fix:
     desc: Fix issues
@@ -38,6 +39,7 @@ tasks:
         vars:
           PRETTIER_ARGS: --write
       - txtpp src -r
+      - task: ex:fix
 
   prettier:
     cmds:

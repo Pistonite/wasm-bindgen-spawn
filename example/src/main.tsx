@@ -27,6 +27,9 @@ function App() {
     <>
       <h1>wasm-bindgen-spawn Example</h1>
       <div style={{ padding: "2em" }}>
+        <p>
+          Cross-Origin Isolation Enabled: {`${globalThis.crossOriginIsolated}`}
+        </p>
         <div style={{ display: "flex", gap: "2em", flexDirection: "column" }}>
           {examples.map((example) => (
             <ExampleButton key={example} method={example} />
