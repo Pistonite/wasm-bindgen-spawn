@@ -1,0 +1,30 @@
+version: '3'
+
+tasks:
+  generate:
+    cmds:
+    - txtpp src/createDispatcher.js
+    - cd example && npm run wasm
+
+  check:
+    desc: Check for issues
+    cmds:
+      - cargo clippy --all-features --all-targets -- -D warnings -D clippy::todo
+      - cargo fmt --check
+      - task: prettier
+        vars:
+          PRETTIER_ARGS: --check
+      - txtpp verify src -r
+
+  fix:
+    desc: Fix issues
+    cmds:
+      - cargo fmt
+      - task: prettier
+        vars:
+          PRETTIER_ARGS: --write
+      - txtpp src -r
+
+  prettier:
+    cmds:
+      - npx prettier "./src/js/*.js" --tab-width 4 --end-of-line auto {{.PRETTIER_ARGS}}

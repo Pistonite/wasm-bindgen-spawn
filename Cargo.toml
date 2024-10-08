@@ -1,0 +1,27 @@
+[package]
+name = "wasm-bindgen-spawn"
+version = "0.0.1"
+edition = "2021"
+description = "Web Worker Multithreading library for wasm-bindgen the uses shared memory"
+repository = "https://github.com/Pistonite/wasm-bindgen-spawn"
+license = "MIT"
+authors = ["Pistonight <pistonknight@outlook.com>"]
+keywords = ["WASM", "threads", "atomics", "wasm-bindgen", "shared-memory"]
+categories = ["web-programming", "wasm"]
+exclude = [
+    ".github/**/*",
+    "example/**/*",
+    "docs/**/*",
+    "src/js/**/*",
+]
+
+[dependencies]
+js-sys = "0.3.70"
+oneshot = { version = "0.1.8", default-features = false, features = ["std"] }
+thiserror = "1.0.64"
+wasm-bindgen = "0.2.93"
+wasm-bindgen-futures = { version = "0.4.43", optional = true }
+
+[features]
+default = ["async"]
+async = ["wasm-bindgen-futures"]

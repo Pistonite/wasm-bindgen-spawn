@@ -1,0 +1,14 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+console_error_panic_hook = "0.1.7"
+js-sys = "0.3.70"
+wasm-bindgen = "0.2.93"
+wasm-bindgen-futures = "0.4.43"
+wasm-bindgen-spawn = { path = ".." }
+
+[lib]
+crate-type = ["cdylib", "rlib"]

@@ -1,0 +1,8 @@
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
+# Ciantic: Tested +simd128 22.7.2021, didn't work! Got some wasm-opt problems.
+# 10.01.2024 - It now works, but threading works without it. So probably best to wait for it to stabilize.
+
+[unstable]
+build-std = ["panic_abort", "std"]
+
