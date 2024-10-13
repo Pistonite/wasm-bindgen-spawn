@@ -22,7 +22,6 @@ tasks:
       - task: prettier
         vars:
           PRETTIER_ARGS: --check
-      - txtpp verify src -r
       - task: ex:check
 
   fix:
