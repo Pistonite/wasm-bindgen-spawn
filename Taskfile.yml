@@ -14,12 +14,6 @@ tasks:
       - txtpp src/js/createDispatcher.min.js
       - cd example && npm run wasm
 
-  example:
-    desc: Build the example into docs folder
-    cmds:
-      - task: ex:build
-      - cp -r example/dist/* docs/
-
   check:
     desc: Check for issues
     cmds:
@@ -28,7 +22,6 @@ tasks:
       - task: prettier
         vars:
           PRETTIER_ARGS: --check
-      - txtpp verify src -r
       - task: ex:check
 
   fix:

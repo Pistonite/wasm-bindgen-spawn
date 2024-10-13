@@ -17,6 +17,3 @@ tasks:
       - rm -rf public/pkg
       - npm run wasm
       - npm run build
-
-
-
