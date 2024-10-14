@@ -175,11 +175,14 @@ worker, a dead lock will happen.
 Firefox also appears to report `navigator.hardwareConcurrency` as the number of physical cores,
 whereas Chrome reports it as number of logical cores on CPUs with SMT/Hyperthreading.
 
-### Poisoning
-Since Rust does not yet support unwinding for `wasm32-unknown-unknown` target,
-mutexes guards do not unlock/poison when a thread panics and instead produce
-a dead lock. Make sure you are not relying on the poisoning mechanism or anything
-that requires unwinding.
+### Panic, unwind, poison
+Unwinding is Rust's mechanism for recovering from panics. It's not supported for `wasm32-unknown-unknown` target, so the panic behavior is `abort`. This means any panic will leave the WASM module in an inconsistent state and it should not be used again.
+
+The implementation puts one thread per worker, and panicking/aborting from a thread will also terminate that worker. So it's safe to panic.
+
+However, because there's no unwinding, mutex guards will not [poison](https://doc.rust-lang.org/nomicon/poisoning.html) when the thread panics. Instead, the guard is not dropped and any subsequent access to the mutex will dead lock.
+
+This can be improved when the [exception handling proposal](https://github.com/WebAssembly/exception-handling/blob/master/proposals/exception-handling/Exceptions.md) becomes stable and enabled by default in most browsers, from when we could catch the panic with unwinding and even send the panic payload back to the thread that called `join`.
 
 ## Thanks
 - [`wasm-mt`](https://github.com/w3reality/wasm-mt) project
