@@ -24,7 +24,7 @@ standardized in WASM, and baseline widely available across browsers.
 
 ## Examples
 The [`examples`](https://github.com/Pistonite/wasm-bindgen-spawn/tree/main/example) directory 
-on GitHub contains a full example using Vite. 
+on GitHub contains a full example using Vite. Check out the [live demo](https://wasm-bindgen-spawn.pistonite.org)
 
 See [ThreadCreator](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.ThreadCreator.html) for the main API.
 
