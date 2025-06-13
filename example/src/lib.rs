@@ -18,13 +18,21 @@ extern "C" {
 }
 
 thread_local! {
-    static THREAD_CREATOR: OnceCell<Arc<ThreadCreator>> = OnceCell::new();
+    static THREAD_CREATOR: OnceCell<Arc<ThreadCreator>> = const { OnceCell::new() };
 }
 
 #[wasm_bindgen]
 pub async fn init_wasm_module() {
     console_error_panic_hook::set_once();
-    let thread_creator = match ThreadCreator::new("pkg/example_bg.wasm", "pkg/example.js") {
+    let thread_creator = match ThreadCreator::unready("pkg/example_bg.wasm", "pkg/example.js") {
+        Ok(v) => v,
+        Err(e) => {
+            log_str("Failed to create thread creator");
+            error(&e);
+            return;
+        }
+    };
+    let thread_creator = match thread_creator.ready().await {
         Ok(v) => v,
         Err(e) => {
             log_str("Failed to create thread creator");
@@ -57,14 +65,15 @@ example!(example_join_handle, {
     let tc = thread_creator();
     let mut handles = vec![];
     for i in 1..=5 {
-        log_str(&format!("spawning: {}", i));
+        log_str(&format!("spawning: {i}"));
         let handle = tc
             .spawn(move || {
-                log_str(&format!("Worker {} thread started", i));
+                log_str(&format!("Worker {i} thread started"));
                 if i == 2 {
                     panic!("Hey, I'm 2 (this is a test panic)");
                 }
-                return i * 3;
+
+                i * 3
             })
             .unwrap();
         handles.push(handle);
@@ -72,8 +81,8 @@ example!(example_join_handle, {
 
     for handle in handles {
         match handle.join() {
-            Ok(value) => log_str(&format!("Worker thread returned: {}", value)),
-            Err(e) => log_str(&format!("Worker thread failed: {}", e)),
+            Ok(value) => log_str(&format!("Worker thread returned: {value}")),
+            Err(e) => log_str(&format!("Worker thread failed: {e}")),
         }
     }
 });
@@ -83,17 +92,17 @@ example!(example_mpsc_channel, {
     let (send, recv) = std::sync::mpsc::channel();
     for i in 0..10 {
         let send = send.clone();
-        log_str(&format!("Spwaning: {}", i));
+        log_str(&format!("Spwaning: {i}"));
 
         tc.spawn(move || {
-            log_str(&format!("Sending: {}", i));
+            log_str(&format!("Sending: {i}"));
             send.send(i).unwrap();
         })
         .unwrap();
     }
     drop(send);
     for i in recv {
-        log_str(&format!("Received: {}", i));
+        log_str(&format!("Received: {i}"));
     }
 });
 
@@ -114,12 +123,12 @@ example!(example_atomic_usize, {
         handles.push(h);
     }
     let sum = counter.load(std::sync::atomic::Ordering::Relaxed);
-    log_str(&format!("Without joining, sum is : {}", sum));
+    log_str(&format!("Without joining, sum is : {sum}"));
     for x in handles {
         x.join().unwrap();
     }
     let sum = counter.load(std::sync::atomic::Ordering::Relaxed);
-    log_str(&format!("After joining, sum is: {}", sum));
+    log_str(&format!("After joining, sum is: {sum}"));
 });
 example!(example_atomic_usize_pooled, {
     let tc = thread_creator();
@@ -130,7 +139,7 @@ example!(example_atomic_usize_pooled, {
         .as_f64()
         .unwrap() as usize;
 
-    log_str(&format!("Spawning {} threads for 1000 tasks", num));
+    log_str(&format!("Spawning {num} threads for 1000 tasks"));
     let mut handles = vec![];
     let mut senders = vec![];
     for _ in 0..num {
@@ -153,24 +162,24 @@ example!(example_atomic_usize_pooled, {
     }
     drop(senders);
     let sum = counter.load(std::sync::atomic::Ordering::Relaxed);
-    log_str(&format!("Without joining, sum is : {}", sum));
+    log_str(&format!("Without joining, sum is : {sum}"));
     for x in handles {
         x.join().unwrap();
     }
     let sum = counter.load(std::sync::atomic::Ordering::Relaxed);
-    log_str(&format!("After joining, sum is: {}", sum));
+    log_str(&format!("After joining, sum is: {sum}"));
 });
 
 example!(example_sleep, {
     let tc = thread_creator();
     let mut handles = vec![];
     for i in 0..5 {
-        log_str(&format!("Spawning: {}", i));
+        log_str(&format!("Spawning: {i}"));
         let h = tc
             .spawn(move || {
-                log_str(&format!("Sleeping: {}", i));
+                log_str(&format!("Sleeping: {i}"));
                 std::thread::sleep(std::time::Duration::from_secs(1));
-                log_str(&format!("Woke up: {}", i));
+                log_str(&format!("Woke up: {i}"));
             })
             .unwrap();
         handles.push(h);
@@ -178,7 +187,7 @@ example!(example_sleep, {
     log_str("Spawned all threads");
     for (i, x) in handles.into_iter().enumerate() {
         x.join().unwrap();
-        log_str(&format!("Joined: {}", i));
+        log_str(&format!("Joined: {i}"));
     }
 });
 
@@ -233,15 +242,16 @@ example!(example_mutex_poison, {
             let mut v = v.lock().unwrap();
             v.push(1);
             panic!("This is a test panic");
-        }).unwrap()
+        })
+        .unwrap()
     };
     match handle.join() {
         Ok(_) => log_str("Should see a panic but didn't"),
-        Err(e) => log_str(&format!("Panic (expected): {:?}", e)),
+        Err(e) => log_str(&format!("Panic (expected): {e:?}")),
     }
 
     match v.lock() {
         Ok(_) => log_str("Should see a poisoned error but didn't"),
-        Err(e) => log_str(&format!("Poisoned (expected): {:?}", e)),
+        Err(e) => log_str(&format!("Poisoned (expected): {e:?}")),
     };
 });

@@ -6,36 +6,37 @@ includes:
     taskfile: ./example
     dir: ./example
 
+  cargo:
+    taskfile: ./mono-dev/task/cargo.yaml
+    internal: true
 
 tasks:
+  install-cargo-extra-tools:
+    aliases: [icets]
+    cmds:
+      - cargo install txtpp
+
+  install:
+    cmds:
+      - rm -rf mono-dev
+      - git clone https://github.com/Pistonight/mono-dev --depth 1
+      - echo "nightly" > example/rust-toolchain
+      - echo "nightly" > rust-toolchain
+
   build:
     desc: Incrementally dev build
     cmds:
       - txtpp src/js/createDispatcher.min.js
-      - cd example && npm run wasm
+      - cd example && pnpm run wasm
 
   check:
     desc: Check for issues
     cmds:
-      - cargo clippy --all-features --all-targets -- -D warnings -D clippy::todo
-      - cargo fmt --check
-      - task: prettier
-        vars:
-          PRETTIER_ARGS: --check
-      - task: ex:check
+      - task: cargo:clippy-all
+      - task: cargo:fmt-check
 
   fix:
     desc: Fix issues
     cmds:
-      - cargo fmt
-      - task: prettier
-        vars:
-          PRETTIER_ARGS: --write
+      - task: cargo:fmt-fix
       - txtpp src -r
-      - task: ex:fix
-
-  prettier:
-    cmds:
-      - npx prettier "./src/js/*.js" --tab-width 4 --end-of-line auto {{.PRETTIER_ARGS}}
-
-

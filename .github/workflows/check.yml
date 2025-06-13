@@ -12,19 +12,13 @@ jobs:
     name: Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: arduino/setup-task@v2
+      - uses: Pistonight/mono-dev/actions/setup@main
         with:
-          version: 3.x
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18.x
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          targets: wasm32-unknown-unknown
-          components: clippy,rust-src,rustfmt
-      - uses: cargo-bins/cargo-binstall@main
-      - run: cargo-binstall --no-confirm txtpp
-      - run: npm ci
+          mono-dev: true
+          ecma-pnpm: true
+          ecma-bun: true
+          rust: nightly
+          rust-wasm: true
+          rust-src: true
+          tool-cargo-binstall: txtpp
       - run: task check
