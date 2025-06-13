@@ -1,19 +1,14 @@
 version: '3'
 
 tasks:
-  check:
-    desc: Check for issues
+  install-ci:
     cmds:
-      - npm run prettier -- --check
-
-  fix:
-    desc: Fix issues
-    cmds:
-      - npm run prettier -- --write
-
+      - pnpm install --frozen-lockfile
   build:
     desc: Build the example
     cmds:
       - rm -rf public/pkg
-      - npm run wasm
-      - npm run build
+      - pnpm run wasm
+      - pnpm run build
+
+

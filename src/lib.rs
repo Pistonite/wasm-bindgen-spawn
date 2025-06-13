@@ -44,9 +44,9 @@ pub enum SpawnError {
 #[wasm_bindgen]
 extern "C" {
     /// Binding to wasm.memory
-    #[wasm_bindgen(js_name = memory, js_namespace = wasm, thread_local)]
+    #[wasm_bindgen(js_name = memory, js_namespace = wasm, thread_local_v2)]
     static MEMORY: JsValue;
-    #[wasm_bindgen(js_name = __dispatch_poll_worker, js_namespace = wasm_bindgen, thread_local)]
+    #[wasm_bindgen(js_name = __dispatch_poll_worker, js_namespace = wasm_bindgen, thread_local_v2)]
     static DISPATCH_POLL_WORKER: JsValue;
 }
 
@@ -66,42 +66,47 @@ extern "C" {
 /// use wasm_bindgen::prelude::*;
 /// use wasm_bindgen_spawm::ThreadCreator;
 ///
-/// let thread_creator = ThreadCreator::new("pkg/your_package_bg.wasm", "pkg/your_package.js");
+/// let thread_creator = ThreadCreator::unready("pkg/your_package_bg.wasm", "pkg/your_package.js");
 /// // on error, this is a JsValue error
 /// assert!(thread_creator.is_ok());
 /// ```
 ///
 /// # Dispatcher ready
-/// After calling [`new`](Self::new), the dispatcher is synchrounously created,
-/// but the JS runtime may only start the dispatcher after the current execution.
-/// Blocking the thread where the ThreadCreator is created may cause threads to never spawn.
+/// Note that the function to create the Thread Creator is called `unready` rather than `new`.
+/// This is because the JS runtime may only start the dispatcher thread after the current
+/// execution context is finished. Blocking the thread before the ThreadCreator is ready may
+/// cause deadlocks.
 ///
-/// For example, the following code will cause a deadlock:
-/// ```no_run
+/// For example, the following code will cause a deadlock, supposed there is a `new` function
+/// ```rust,ignore
 /// use wasm_bindgen::prelude::*;
 /// use wasm_bindgen_spawm::ThreadCreator;
 ///
 /// pub fn will_deadlock() -> Result<(), Box<dyn std::error::Error>> {
+///     // the `new` function is hypothetical
 ///     let thread_creator = ThreadCreator::new("pkg/your_package_bg.wasm", "pkg/your_package.js")?;
 ///     // calling `spawn` is ok here
 ///     let thread = thread_creator.spawn(move || {
 ///         // do some work
 ///     })?;
-///     // this will deadlock because the thread won't be spawned
+///     // this will deadlock because the thread won't be spawned until this synchronous context is
+///     // finished
 ///     thread.join()?;
 ///
 ///     Ok(())   
 /// }
 /// ```
-/// To avoid this, the `ThreadCreator` has a [`ready`](Self::ready) method that you can
-/// await to ensure the dispatcher is ready, before calling `spawn`.
+/// The `unready` factory function exists to ensure user calls
+/// [`ready`](ThreadCreatorUnready::ready)
+/// before start using the `ThreadCreator` to spawn threads. It also has a nice side effect that
+/// `ThreadCreator` is now `Send + Sync` since it doesn't need to hold the `Promise`
 /// ```no_run
 /// use wasm_bindgen::prelude::*;
 /// use wasm_bindgen_spawm::ThreadCreator;
 ///
 /// pub async fn will_not_deadlock() -> Result<(), Box<dyn std::error::Error>> {
-///     let thread_creator = ThreadCreator::new("pkg/your_package_bg.wasm", "pkg/your_package.js")?;
-///     thread_creator.ready().await?;
+///     let thread_creator = ThreadCreator::unready("pkg/your_package_bg.wasm", "pkg/your_package.js")?;
+///     let thread_creator = thread_creator.ready().await?;
 ///
 ///     let thread = thread_creator.spawn(move || {
 ///         return 42;
@@ -118,7 +123,10 @@ extern "C" {
 /// once when creating the `ThreadCreator`. You can write the rest of the code without `async`.
 ///
 /// You can also
-/// disable the `async` feature and use [`ready_promise`](Self::ready_promise) to avoid depending on `wasm-bindgen-futures`
+/// disable the `async` feature and use [`into_promise_and_inner`](ThreadCreatorUnready::into_promise_and_inner)
+/// to avoid depending on `wasm-bindgen-futures`. You need to manually wait for the promise in this
+/// case before using the `ThreadCreator` (for example sending the promise to JS and awaiting it there).
+/// See the example below for more information.
 ///
 /// # Joining threads
 /// Joining should feel pretty much like the `std` library. However, there is one caveat -
@@ -136,7 +144,7 @@ extern "C" {
 /// You can create a global thread creator by using `thread_local`:
 /// ```no_run
 /// use wasm_bindgen::prelude::*;
-/// use wasm_bindgen_spawm::ThreadCreator;
+/// use wasm_bindgen_spawn::ThreadCreator;
 ///
 /// thread_local! {
 ///     static THREAD_CREATOR: OnceCell<ThreadCreator> = OnceCell::new();
@@ -144,8 +152,8 @@ extern "C" {
 ///
 /// #[wasm_bindgen]
 /// pub fn create_thread_creator() -> Result<Promise, JsValue> {
-///     let thread_creator = ThreadCreator::new("pkg/your_package_bg.wasm", "pkg/your_package.js")?;
-///     let promise = thread_creator.ready_promise().clone();    
+///     let thread_creator = ThreadCreator::unready("pkg/your_package_bg.wasm", "pkg/your_package.js")?;
+///     let (promise, thread_creator) = thread_creator.into_promise_and_inner();
 ///     THREAD_CREATOR.with(move |tc| {
 ///         tc.set(thread_creator);
 ///     });
@@ -154,6 +162,8 @@ extern "C" {
 ///     // of your code doesn't need wasm-bindgen-futures)
 /// }
 ///
+///
+/// // On JS side, make sure this function is only called after the promise is resolved.
 /// #[wasm_bindgen]
 /// pub fn do_some_work_on_thread() {
 ///     let handle = THREAD_CREATOR.with(|tc| {
@@ -167,19 +177,49 @@ extern "C" {
 /// }
 /// ```
 pub struct ThreadCreator {
+    /// Id for the next thread
     next_id: AtomicUsize,
-    /// Promise for if the dispatcher is ready
-    dispatcher_promise: Promise,
     /// Sender to send the thread closure to the dispatcher for creating threads
     send: DispatchSender,
+}
+static_assertions::assert_impl_all!(ThreadCreator: Send, Sync);
+
+/// See [`ThreadCreator::unready`] for more information
+pub struct ThreadCreatorUnready {
+    thread_creator: ThreadCreator,
+    /// Promise for if the dispatcher is ready
+    dispatcher_promise: Promise,
+}
+
+impl ThreadCreatorUnready {
+    /// Returns the promise that resolves when the dispatcher is ready,
+    /// and the inner [`ThreadCreator`]. Note that the inner creator
+    /// can only be used after awaiting on the Promise.
+    ///
+    /// In async context, it might be more convenient to use [`ready`](ThreadCreatorUnready::ready)
+    /// instead
+    ///
+    /// See the struct documentation for more information
+    pub fn into_promise_and_inner(self) -> (Promise, ThreadCreator) {
+        (self.dispatcher_promise, self.thread_creator)
+    }
+
+    /// Await the dispatcher to be ready.
+    ///
+    /// See the struct documentation for more information
+    #[cfg(feature = "async")]
+    pub async fn ready(self) -> Result<ThreadCreator, JsValue> {
+        JsFuture::from(self.dispatcher_promise).await?;
+        Ok(self.thread_creator)
+    }
 }
 
 impl ThreadCreator {
     /// Create a Web Worker to dispatch threads with the wasm module url and the
-    /// wasm_bindgen JS url.
+    /// wasm_bindgen JS url. The Worker may not be ready until `ready` is awaited
     ///
     /// See the struct documentation for more information
-    pub fn new(wasm_url: &str, wbg_url: &str) -> Result<Self, JsValue> {
+    pub fn unready(wasm_url: &str, wbg_url: &str) -> Result<ThreadCreatorUnready, JsValue> {
         // function([wasm_url, wbg_url, memory, recv]) -> Promise<void>;
         let create_dispatcher =
             Function::new_with_args("args", include_str!("js/createDispatcher.min.js"));
@@ -208,27 +248,13 @@ impl ThreadCreator {
                 ]),
             )?
             .dyn_into::<Promise>()?;
-        Ok(Self {
-            next_id: AtomicUsize::new(1),
+        Ok(ThreadCreatorUnready {
+            thread_creator: Self {
+                next_id: AtomicUsize::new(1),
+                send,
+            },
             dispatcher_promise: promise,
-            send,
         })
-    }
-
-    /// Returns the promise that resolves when the dispatcher is ready
-    ///
-    /// See the struct documentation for more information
-    pub fn ready_promise(&self) -> &Promise {
-        &self.dispatcher_promise
-    }
-
-    /// Await the dispatcher to be ready.
-    ///
-    /// See the struct documentation for more information
-    #[cfg(feature = "async")]
-    pub async fn ready(&self) -> Result<(), JsValue> {
-        JsFuture::from(self.dispatcher_promise.clone()).await?;
-        Ok(())
     }
 
     /// Spawn a new thread to execute F.
@@ -322,6 +348,7 @@ pub fn __worker_send(id: usize, send: NonNull<ValueSender>, value: Option<NonNul
     }
 }
 
+/// Send a start signal to indicate the dispatcher is ready
 #[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_start(start: NonNull<SignalSender>) {
@@ -330,6 +357,7 @@ pub fn __dispatch_start(start: NonNull<SignalSender>) {
     let _ = start.send(());
 }
 
+/// Receive a request to spawn a thread with the dispatcher.
 #[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_recv(recv: NonNull<DispatchReceiver>) -> Option<Vec<JsValue>> {
@@ -353,6 +381,8 @@ pub fn __dispatch_recv(recv: NonNull<DispatchReceiver>) -> Option<Vec<JsValue>> 
     Some(value_vec)
 }
 
+/// Return true if the spawned thread has started and the dispatcher
+/// could start blocking for waiting for new spawn requests
 #[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_poll_worker(start_recv: NonNull<SignalReceiver>) -> bool {
@@ -365,6 +395,7 @@ pub fn __dispatch_poll_worker(start_recv: NonNull<SignalReceiver>) -> bool {
     }
 }
 
+/// Drop the receiver
 #[doc(hidden)]
 #[wasm_bindgen]
 pub fn __dispatch_drop(recv: NonNull<mpsc::Receiver<BoxClosure>>) {

@@ -3,7 +3,7 @@ return (async function () {
     const DISPATCHER =
         wbg +
         `
-self.onmessage=async(_)=>{const{recv:a,start_send:i,url:o,memory:t,wasm:n}=_.data;await wasm_bindgen({memory:t,module_or_path:n}),wasm_bindgen.__dispatch_start(i);while(!0){const r=wasm_bindgen.__dispatch_recv(a);if(!r)break;const[w,d,m,c,p]=r;await new Promise((e)=>{const s=new Worker(o);s.onmessage=({data:g})=>{if(g)return s.postMessage({id:w,f:d,send:m,start:c,memory:t,wasm:n}),e();s.terminate()}});while(!wasm_bindgen.__dispatch_poll_worker(p))await new Promise((e)=>setTimeout(e,0))}wasm_bindgen.__dispatch_drop(a),self.postMessage(0)};self.postMessage(1);
+self.onmessage=async(_)=>{let{recv:a,start_send:i,url:o,memory:t,wasm:n}=_.data;await wasm_bindgen({memory:t,module_or_path:n}),wasm_bindgen.__dispatch_start(i);while(!0){let r=wasm_bindgen.__dispatch_recv(a);if(!r)break;let[w,d,m,c,p]=r;await new Promise((e)=>{let s=new Worker(o);s.onmessage=({data:g})=>{if(g)return s.postMessage({id:w,f:d,send:m,start:c,memory:t,wasm:n}),e();s.terminate()}});while(!wasm_bindgen.__dispatch_poll_worker(p))await new Promise((e)=>setTimeout(e,0))}wasm_bindgen.__dispatch_drop(a),self.postMessage(0)};self.postMessage(1);
 
 `;
     const dispatcherUrl = URL.createObjectURL(
@@ -12,7 +12,7 @@ self.onmessage=async(_)=>{const{recv:a,start_send:i,url:o,memory:t,wasm:n}=_.dat
     const WORKER =
         wbg +
         `
-self.onmessage=async(n)=>{const{id:s,f:_,send:a,start:o,memory:r,wasm:t}=n.data;await wasm_bindgen({memory:r,module_or_path:t});try{const e=wasm_bindgen.__worker_main(_,o);wasm_bindgen.__worker_send(s,a,e)}catch(e){self.console.error(e),wasm_bindgen.__worker_send(s,a)}self.postMessage(0)};self.postMessage(1);
+self.onmessage=async(n)=>{let{id:s,f:_,send:a,start:o,memory:r,wasm:t}=n.data;await wasm_bindgen({memory:r,module_or_path:t});try{let e=wasm_bindgen.__worker_main(_,o);wasm_bindgen.__worker_send(s,a,e)}catch(e){self.console.error(e),wasm_bindgen.__worker_send(s,a)}self.postMessage(0)};self.postMessage(1);
 
 `;
     const workerUrl = URL.createObjectURL(
