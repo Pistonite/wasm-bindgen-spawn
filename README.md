@@ -61,7 +61,9 @@ Read the full article for more details on the implications of Cross-Origin Isola
 2. Add the following to `.cargo/config.toml`
     ```toml
     [target.wasm32-unknown-unknown]
-    rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
+    rustflags = ["-C", "target-feature=+atomics"]
+    # You also need `bulk-memory` for Rust < 1.87. For 1.87+ it's enabled by default
+    # rustflags = ["-C", "target-feature=+atomics,+bulk-memory"]
 
     [unstable]
     build-std = ["panic_abort", "std"]
