@@ -6,7 +6,7 @@ settings:
 
 importers:
 
-  .:
+  example:
     dependencies:
       react:
         specifier: ^18.3.1
