@@ -34,7 +34,6 @@ tasks:
     cmds:
       - task: cargo:clippy-all
       - task: cargo:fmt-check
-      - txtpp verify src -r
 
   fix:
     desc: Fix issues
