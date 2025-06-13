@@ -14,9 +14,9 @@ include = [
     "src/js/createDispatcher.min.js",
     "src/**/*.rs",
     "Cargo.toml",
-    "LICENSE",
-    "README.md",
-    "rust-toolchain",
+    "/LICENSE",
+    "/README.md",
+    "/rust-toolchain",
 ]
 
 [dependencies]
