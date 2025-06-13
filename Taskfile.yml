@@ -20,6 +20,8 @@ tasks:
     cmds:
       - rm -rf mono-dev
       - git clone https://github.com/Pistonight/mono-dev --depth 1
+      - echo "nightly" > example/rust-toolchain
+      - echo "nightly" > rust-toolchain
 
   build:
     desc: Incrementally dev build

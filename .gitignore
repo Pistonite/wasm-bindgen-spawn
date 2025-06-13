@@ -4,3 +4,4 @@
 *.min.js
 !/src/js/createDispatcher.min.js
 /mono-dev
+rust-toolchain
