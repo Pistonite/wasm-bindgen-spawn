@@ -11,11 +11,18 @@ self.onmessage = async (e) => {
         await new Promise((resolve) => {
             const worker = new Worker(url);
             worker.onmessage = ({ data }) => {
-                if (data) {
-                    worker.postMessage({ id, f, send, start, memory, wasm });
-                    return resolve();
+                switch (data) {
+                    case 0: // success
+                        worker.terminate();
+                        return;
+                    case 1: // ready
+                        worker.postMessage({ id, f, send, start, memory, wasm });
+                        return resolve();
+                    case 2: // panic
+                        wasm_bindgen.__worker_send(id, send);
+                        worker.terminate();
+                        return;
                 }
-                worker.terminate();
             };
         });
         while (!wasm_bindgen.__dispatch_poll_worker(next_start_recv)) {

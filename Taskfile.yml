@@ -9,6 +9,7 @@ includes:
   cargo:
     taskfile: ./mono-dev/task/cargo.yaml
     internal: true
+    optional: true
 
 tasks:
   install-cargo-extra-tools:
