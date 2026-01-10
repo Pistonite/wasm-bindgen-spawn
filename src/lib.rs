@@ -300,7 +300,7 @@ impl<T: Send + 'static> JoinHandle<T> {
     /// # Note about panicking
     /// Note that `wasm32-unknown-unknown` target does not support unwinding yet.
     /// This means no clean up (i.e. drop) is guaranteed, and safety mechanisms such as
-    /// poisoning are not available. Panicking while holding a lock will not release the lock 
+    /// poisoning are not available. Panicking while holding a lock will not release the lock
     /// and will likely produce a dead lock.
     pub fn join(self) -> Result<T, JoinError> {
         // recv() will only error if somehow the thread terminated without sending a value
@@ -313,7 +313,7 @@ impl<T: Send + 'static> JoinHandle<T> {
         Ok(*value)
     }
 
-    /// Check if the thread has finished executing, or panicked. 
+    /// Check if the thread has finished executing, or panicked.
     /// This can be used to implement non-blocking join.
     pub fn is_finished(&self) -> bool {
         self.recv.has_message() || self.recv.is_closed()

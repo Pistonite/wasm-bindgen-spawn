@@ -1,6 +1,6 @@
 use std::{
     cell::OnceCell,
-    sync::{atomic::AtomicUsize, Arc, Mutex},
+    sync::{Arc, Mutex, atomic::AtomicUsize},
 };
 
 use js_sys::Function;
