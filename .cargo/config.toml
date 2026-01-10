@@ -1,6 +1,3 @@
-[build]
-# target = "wasm32-unknown-unknown"
-
 [target.wasm32-unknown-unknown]
 rustflags = ["-C", "target-feature=+atomics"]
 # Ciantic: Tested +simd128 22.7.2021, didn't work! Got some wasm-opt problems.
