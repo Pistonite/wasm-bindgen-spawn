@@ -61,7 +61,16 @@ Read the full article for more details on the implications of Cross-Origin Isola
 2. Add the following to `.cargo/config.toml`
     ```toml
     [target.wasm32-unknown-unknown]
-    rustflags = ["-C", "target-feature=+atomics"]
+    rustflags = [
+        "-C", "target-feature=+atomics",
+        "-Clink-args=--shared-memory",
+        "-Clink-args=--import-memory",
+        "-Clink-args=--max-memory=1073741824",
+        "-Clink-args=--export=__wasm_init_tls",
+        "-Clink-args=--export=__tls_size",
+        "-Clink-args=--export=__tls_align",
+        "-Clink-args=--export=__tls_base",
+    ]
     # You also need `bulk-memory` for Rust < 1.87. For 1.87+ it's enabled by default
     # rustflags = ["-C", "target-feature=+atomics,+bulk-memory"]
 

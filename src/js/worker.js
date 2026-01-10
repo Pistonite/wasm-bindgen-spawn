@@ -6,7 +6,8 @@ self.onmessage = async (e) => {
         wasm_bindgen.__worker_send(id, send, value);
     } catch (e) {
         self.console.error(e);
-        wasm_bindgen.__worker_send(id, send);
+        self.postMessage(2);
+        return;
     }
     self.postMessage(0);
 };

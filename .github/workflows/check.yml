@@ -20,5 +20,5 @@ jobs:
           rust: nightly
           rust-wasm: true
           rust-src: true
-          tool-cargo-binstall: txtpp
+          tool-cargo-install: txtpp
       - run: task check
