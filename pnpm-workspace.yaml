@@ -1,4 +1,11 @@
+minimumReleaseAgeExclude:
+  - '@pistonite/*'
 packages:
   - example
+  - packages/dispatcher
 onlyBuiltDependencies:
   - esbuild
+catalog:
+  mono-dev: github:pistonight/mono-dev#dist
+allowBuilds:
+  esbuild: true
