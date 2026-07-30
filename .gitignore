@@ -2,6 +2,7 @@
 node_modules
 /Cargo.lock
 *.min.js
-!/src/js/createDispatcher.min.js
+!/src/ts/createDispatcher.min.js
 /mono-dev
 rust-toolchain
+.idea
