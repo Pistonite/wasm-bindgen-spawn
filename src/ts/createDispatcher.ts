@@ -1,35 +1,50 @@
-import workerSource from "./dispatcher.worker";
-import dispatcherSource from "./dispatcher";
+import dispatcherSource from "./dispatcher.ts?inline";
+import workerSource from "./dispatcher.worker.ts?inline";
 
-import {type Receiver, type StartReceive, type StartSend, ThreadState} from "./globals";
+import type { ThreadStateType } from "./threadState";
 
 export const dispatcherBuilder = async (
 	wasmUrl: string,
-	bindgenUrl: string,
+	wbgUrl: string,
 	memory: WebAssembly.Memory,
 	receiverPtr: Receiver,
 	startSendPtr: StartSend,
 	startReceivePtr: StartReceive,
-	dispatchPoll: (receiverPtr: StartReceive) => ThreadState
+	dispatchPoll: (receiverPtr: StartReceive) => ThreadStateType
 ) => {
-	const wasmBindgen = await (await fetch(bindgenUrl)).text();
+	// const wasmBindgen = await (await fetch(bindgenUrl)).text();
 	// this one is dispatcher.ts - let's replace raw string inlining with build-time inlining from the actual script file
-	const dispatcherSrc = wasmBindgen + dispatcherSource;
+	// const dispatcherSrc = wasmBindgen + dispatcherSource;
 
-	const dispatcherUrl = URL.createObjectURL(
-		new Blob([dispatcherSrc], {type: "text/javascript"}),
-	);
+	// const dispatcherUrl = URL.createObjectURL(
+	// 	new Blob([dispatcherSrc], {type: "text/javascript"}),
+	// );
 
 	// This one is dispatcher.worker.ts - see above.
-	const workerSrc = wasmBindgen + workerSource;
-
-	const workerUrl = URL.createObjectURL(
-		new Blob([workerSrc], {type: "text/javascript"}),
-	);
+	const workerSrc = workerSource;
 
 	const wasm = await (await fetch(wasmUrl)).arrayBuffer();
 
-	const dispatcher = new Worker(dispatcherUrl);
+	const workerUrl = URL.createObjectURL(
+		new Blob(
+			[workerSrc],
+			{type:"text/javascript"}
+		)
+	);
+
+	const dispatcherUrl = URL.createObjectURL(
+		new Blob(
+			[dispatcherSource],
+			{type:"text/javascript"}
+		)
+	);
+
+	const dispatcher = new Worker(
+		dispatcherUrl,
+		{
+			type:"module"
+		}
+	);
 
 	await new Promise<void>((resolve) => {
 		dispatcher.onmessage = ({data}) => {
@@ -37,6 +52,7 @@ export const dispatcherBuilder = async (
 				resolve();
 				// FXIME: Different keys! Look at the inlined js code above
 				dispatcher.postMessage({
+					wbgUrl,
 					receiverPtr,
 					startSendPtr,
 					url: workerUrl,

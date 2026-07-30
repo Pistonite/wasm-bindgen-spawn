@@ -1,7 +1,9 @@
 {
+  "scripts": {
+    "build": "node build.mjs"
+  },
   "devDependencies": {
-    "@rsbuild/core": "^2.1.9",
-    "@swc/core": "^1.15.47",
-    "@types/node": "^26.1.2"
+    "@types/node": "^26.1.2",
+    "esbuild": "^0.28.1"
   }
 }

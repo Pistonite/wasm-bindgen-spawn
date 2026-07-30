@@ -1,20 +1,23 @@
-export enum ThreadState {
-	Ready = 1,
-	Success = 0,
-	Panic = 2,
-}
+export {};
 
 type Option<T> = T | null;
 
 declare const __phantom: unique symbol;
 
-export type Pointer<T extends string> = number & { readonly [__phantom]: T };
-
-export type Receiver = Pointer<"receiver">;
-export type StartSend = Pointer<"start_send">;
-export type StartReceive = Pointer<"start_receive">;
+// export const ThreadState = {
+// 	Ready: 1,
+// 	Success: 0,
+// 	Panic: 2,
+// } as const;
+//
+// export type ThreadStateType =
+// 	typeof ThreadState[keyof typeof ThreadState];
 
 declare global {
+	type Pointer<T extends string> = number & { readonly [__phantom]: T };
+	type Receiver = Pointer<"receiver">;
+	type StartSend = Pointer<"start_send">;
+	type StartReceive = Pointer<"start_receive">;
 	const wasm_bindgen: {
 		(options: {
 			memory: WebAssembly.Memory;

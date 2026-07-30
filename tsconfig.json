@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "strict": true,
+    "module": "es2020",
     "lib": [
       "esnext",
       "WebWorker"
@@ -9,5 +11,4 @@
     "src/**/*.ts",
     "src/**/*.d.ts"
   ],
-  "strict": true
 }

@@ -1,6 +1,7 @@
-import { type Receiver, type StartSend, ThreadState} from "./globals";
+import { ThreadState, type ThreadStateType } from "./threadState";
 
 type DispatcherPayload = {
+	wbgUrl: string;
 	receiverPtr: Receiver,
 	startSendPtr: StartSend,
 	url: string,
@@ -8,8 +9,16 @@ type DispatcherPayload = {
 	wasm: ArrayBuffer,
 }
 
+let wasm_bindgen: any;
+
 self.onmessage = async (event: MessageEvent<DispatcherPayload>) => {
-	const {receiverPtr, startSendPtr, url, memory, wasm} = event.data;
+	const {wbgUrl, receiverPtr, startSendPtr, url, memory, wasm,} = event.data;
+
+	if (!wasm_bindgen) {
+		wasm_bindgen = (
+			await import(/* webpackIgnore: true */ wbgUrl)
+		).default;
+	}
 
 	await wasm_bindgen({memory, module_or_path: wasm});
 	wasm_bindgen.__dispatch_start(startSendPtr);
@@ -21,14 +30,17 @@ self.onmessage = async (event: MessageEvent<DispatcherPayload>) => {
 		}
 		const [id, f, send, start, nextStartRecv] = p;
 		await new Promise<void>((resolve) => {
-			const worker = new Worker(url);
-			worker.onmessage = ({data}: MessageEvent<ThreadState>) => {
+			const worker = new Worker(url, {
+				type: "module"
+			});
+
+			worker.onmessage = ({data}: MessageEvent<ThreadStateType>) => {
 				switch (data) {
 					case ThreadState.Success:
 						worker.terminate();
 						return;
 					case ThreadState.Ready:
-						worker.postMessage({id, f, send, start, memory, wasm});
+						worker.postMessage({id, f, send, start, memory, wasm, wbgUrl});
 						return resolve();
 					case ThreadState.Panic:
 						wasm_bindgen.__worker_send(id, send);
@@ -45,5 +57,3 @@ self.onmessage = async (event: MessageEvent<DispatcherPayload>) => {
 	self.postMessage(ThreadState.Success);
 };
 self.postMessage(ThreadState.Ready);
-
-export default self;

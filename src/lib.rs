@@ -222,7 +222,7 @@ impl ThreadCreator {
     pub fn unready(wasm_url: &str, wbg_url: &str) -> Result<ThreadCreatorUnready, JsValue> {
         // function([wasm_url, wbg_url, memory, recv]) -> Promise<void>;
         let create_dispatcher =
-            Function::new_with_args("args", include_str!("js/createDispatcher.min.js"));
+            Function::new_with_args("args", include_str!("ts/dist/createDispatcher.min.js"));
         let wasm_url = JsValue::from_str(wasm_url);
         let wbg_url = JsValue::from_str(wbg_url);
         let memory = MEMORY.with(|memory| memory.clone());
