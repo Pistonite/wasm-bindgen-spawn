@@ -4,15 +4,6 @@ type Option<T> = T | null;
 
 declare const __phantom: unique symbol;
 
-// export const ThreadState = {
-// 	Ready: 1,
-// 	Success: 0,
-// 	Panic: 2,
-// } as const;
-//
-// export type ThreadStateType =
-// 	typeof ThreadState[keyof typeof ThreadState];
-
 declare global {
 	type Pointer<T extends string> = number & { readonly [__phantom]: T };
 	type Receiver = Pointer<"receiver">;

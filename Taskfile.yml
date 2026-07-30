@@ -12,11 +12,6 @@ includes:
     optional: true
 
 tasks:
-  install-cargo-extra-tools:
-    aliases: [icets]
-    cmds:
-      - cargo install txtpp
-
   install:
     cmds:
       - rm -rf mono-dev
@@ -27,7 +22,7 @@ tasks:
   build:
     desc: Incrementally dev build
     cmds:
-      - txtpp src/js/createDispatcher.min.js
+      - pnpm run build
       - cd example && pnpm run wasm
 
   check:
