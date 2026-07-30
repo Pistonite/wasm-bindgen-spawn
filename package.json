@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "@rsbuild/core": "^2.1.9",
+    "@swc/core": "^1.15.47",
+    "@types/node": "^26.1.2"
+  }
+}

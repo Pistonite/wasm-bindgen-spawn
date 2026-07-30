@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "esnext",
+      "WebWorker"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts"
+  ],
+  "strict": true
+}
