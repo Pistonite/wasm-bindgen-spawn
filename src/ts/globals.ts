@@ -1,4 +1,8 @@
-export {};
+export enum ThreadState {
+	Ready = 1,
+	Success = 0,
+	Panic = 2,
+}
 
 type Option<T> = T | null;
 
@@ -9,12 +13,6 @@ export type Pointer<T extends string> = number & { readonly [__phantom]: T };
 export type Receiver = Pointer<"receiver">;
 export type StartSend = Pointer<"start_send">;
 export type StartReceive = Pointer<"start_receive">;
-
-export const enum ThreadState {
-	Success,
-	Ready,
-	Panic
-}
 
 declare global {
 	const wasm_bindgen: {

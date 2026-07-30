@@ -1,17 +1,17 @@
-import { defineConfig } from '@rsbuild/core';
+import {defineConfig} from '@rsbuild/core';
 import * as path from 'node:path';
 
 export default defineConfig({
 	source: {
 		entry: {
-			dispatcher: './src/ts/index.ts',
+			dispatcher: "./src/ts/dispatcher.ts",
+			['dispatcher.worker']: "./src/ts/dispatcher.worker.ts",
 		},
 	},
 	output: {
-		target: 'web',
 		distPath: {
-			root: './src/',
-			js: './src/ts/dist',
+			root: './src/ts/dist',
+			js: '.',
 		},
 		assetPrefix: 'a',
 		filename: {
@@ -20,23 +20,32 @@ export default defineConfig({
 	},
 	tools: {
 		htmlPlugin: false,
-		rspack: {
-			module: {
-				rules: [
+		rspack(config) {
+			config.module.rules.push({
+				test: /\.worker\.ts$/,
+				use: [
 					{
-						resourceQuery: /inline/,
-						use: [
-							path.resolve(
-								'inline-ts-loader.cjs'
-							),
-						],
+						loader: path.resolve("inline-ts-loader.cjs"),
 					},
 				],
-			},
+			});
 
-			output: {
+			config.module.rules.push({
+				test: /dispatcher\.ts$/,
+				use: [
+					{
+						loader: path.resolve("inline-ts-loader.cjs"),
+					},
+				],
+			});
+
+			config.output = {
 				iife: true,
-			},
+			};
+			config.optimization = {
+				runtimeChunk: false,
+				splitChunks: false,
+			}
 		},
 	},
 });

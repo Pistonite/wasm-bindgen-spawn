@@ -1,4 +1,4 @@
-import {Receiver, StartSend, ThreadState} from "./globals";
+import { type Receiver, type StartSend, ThreadState} from "./globals";
 
 type DispatcherPayload = {
 	receiverPtr: Receiver,
@@ -45,3 +45,5 @@ self.onmessage = async (event: MessageEvent<DispatcherPayload>) => {
 	self.postMessage(ThreadState.Success);
 };
 self.postMessage(ThreadState.Ready);
+
+export default self;

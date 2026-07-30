@@ -9,15 +9,15 @@ module.exports = function (source) {
 			parser: {
 				syntax: "typescript",
 			},
-		},
-		module: {
-			type: "commonjs",
+			transform: {
+				constModules: true,
+			},
 		},
 	})
 		.then(result => {
 			callback(
 				null,
-				`module.exports = ${JSON.stringify(result.code)}`
+				`export default ${JSON.stringify(result.code)};`
 			);
 		})
 		.catch(callback);

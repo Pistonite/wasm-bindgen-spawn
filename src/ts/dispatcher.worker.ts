@@ -1,6 +1,6 @@
-import {ThreadState} from "./globals";
+import { ThreadState } from "./globals";
 
-self.onmessage = async (event: MessageEvent<?>) => {
+self.onmessage = async (event: MessageEvent<any>) => {
 	const {id, f, send, start, memory, wasm} = event.data;
 	await wasm_bindgen({memory, module_or_path: wasm});
 	try {
@@ -14,3 +14,5 @@ self.onmessage = async (event: MessageEvent<?>) => {
 	self.postMessage(ThreadState.Success);
 };
 self.postMessage(ThreadState.Ready);
+
+export default self;

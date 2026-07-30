@@ -1,6 +1,7 @@
-import workerSource from "./dispatcher.worker.ts?inline";
-import dispatcherSource from "./dispatcher.ts?inline";
-import {Receiver, StartReceive, StartSend, ThreadState} from "./globals";
+import workerSource from "./dispatcher.worker";
+import dispatcherSource from "./dispatcher";
+
+import {type Receiver, type StartReceive, type StartSend, ThreadState} from "./globals";
 
 export const dispatcherBuilder = async (
 	wasmUrl: string,
