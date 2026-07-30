@@ -1,7 +1,7 @@
 {
   "scripts": {
-    "build:web": "node build.web.mjs",
-    "build:no-modules": "node build.no-modules.mjs",
+    "build:web": "node build.mjs --web",
+    "build:no-modules": "node build.mjs",
     "build": "npm-run-all --parallel build:web build:no-modules"
   },
   "devDependencies": {
