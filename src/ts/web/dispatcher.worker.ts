@@ -1,9 +1,10 @@
 import { ThreadState } from "../threadState";
 import {loadWasmBindgen, type WBGLoaderResult} from "./wbg.loader";
+import type {DispatcherWorkerPayload} from "./dispatcher";
 
 let wasm_bindgen: Option<WBGLoaderResult> = null;
 
-self.onmessage = async (event: MessageEvent<any>) => {
+self.onmessage = async (event: MessageEvent<DispatcherWorkerPayload>) => {
 	const {id, f, send, start, memory, wasm, wbgUrl} = event.data;
 
 	let started = false;
