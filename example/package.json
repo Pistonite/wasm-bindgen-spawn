@@ -4,14 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "wasm": "wasm-pack build -t no-modules --out-dir public/pkg --profiling --no-pack",
+    "wasm": "npm-run-all --parallel wasm:web wasm:no-modules",
+    "wasm:web": "wasm-pack build -t web --out-dir src/pages/web/pkg --profiling --no-pack -- --no-default-features --features web",
+    "wasm:no-modules": "wasm-pack build -t no-modules --out-dir public/pkg --profiling --no-pack --no-default-features --features no-modules",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "prettier": "prettier './**/*.{ts,tsx,json,js,jsx,cjs,css}'"
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router": "^8.3.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

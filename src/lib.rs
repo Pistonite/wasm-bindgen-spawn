@@ -5,6 +5,9 @@ compile_error!(
     "Some target features are not enabled. Please read the README and set the right rustflags"
 );
 
+#[cfg(all(feature = "web", feature = "no-modules"))]
+compile_error!("features `web` and `no-modules` are mutually exclusive");
+
 use std::panic::UnwindSafe;
 use std::ptr::NonNull;
 use std::sync::atomic::AtomicUsize;
@@ -46,7 +49,26 @@ extern "C" {
     /// Binding to wasm.memory
     #[wasm_bindgen(js_name = memory, js_namespace = wasm, thread_local_v2)]
     static MEMORY: JsValue;
-    #[wasm_bindgen(js_name = __dispatch_poll_worker, js_namespace = wasm_bindgen, thread_local_v2)]
+}
+
+#[cfg(feature = "web")]
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(
+        js_name = __wasm_bindgen_spawn_poll_worker,
+        thread_local_v2
+    )]
+    static DISPATCH_POLL_WORKER: JsValue;
+}
+
+#[cfg(feature = "no-modules")]
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(
+        js_name = __dispatch_poll_worker,
+        js_namespace = wasm_bindgen,
+        thread_local_v2
+    )]
     static DISPATCH_POLL_WORKER: JsValue;
 }
 
@@ -221,8 +243,21 @@ impl ThreadCreator {
     /// See the struct documentation for more information
     pub fn unready(wasm_url: &str, wbg_url: &str) -> Result<ThreadCreatorUnready, JsValue> {
         // function([wasm_url, wbg_url, memory, recv]) -> Promise<void>;
-        let create_dispatcher =
-            Function::new_with_args("args", include_str!("ts/dist/createDispatcher.min.js"));
+
+        let dispatcher_source = {
+            #[cfg(feature = "web")]
+            {
+                include_str!("ts/dist/createDispatcher.web.min.js")
+            }
+
+            #[cfg(not(feature = "web"))]
+            {
+                include_str!("ts/dist/createDispatcher.no_modules.min.js")
+            }
+        };
+
+        let create_dispatcher = Function::new_with_args("args", dispatcher_source);
+
         let wasm_url = JsValue::from_str(wasm_url);
         let wbg_url = JsValue::from_str(wbg_url);
         let memory = MEMORY.with(|memory| memory.clone());
@@ -244,7 +279,6 @@ impl ThreadCreator {
                     recv_ptr,
                     JsValue::from(start_send_ptr),
                     JsValue::from(start_recv_ptr),
-                    DISPATCH_POLL_WORKER.with(|v| v.clone()),
                 ]),
             )?
             .dyn_into::<Promise>()?;
@@ -330,9 +364,7 @@ fn make_closure<F: FnOnce() -> BoxValue + Send + 'static + UnwindSafe>(
 
 #[doc(hidden)]
 #[wasm_bindgen]
-pub fn __worker_main(f: NonNull<BoxClosure>, start: NonNull<SignalSender>) -> NonNull<BoxValue> {
-    // signal the dispatcher that the worker is now started, and is safe to block
-    __dispatch_start(start);
+pub fn __worker_main(f: NonNull<BoxClosure>) -> NonNull<BoxValue> {
     let f = unsafe { Box::from_raw(f.as_ptr()) };
     let value = f();
     let value_ptr = Box::into_raw(Box::new(value));

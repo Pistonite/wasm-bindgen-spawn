@@ -8,6 +8,7 @@ rustflags = [
     "-Clink-args=--export=__tls_size",
     "-Clink-args=--export=__tls_align",
     "-Clink-args=--export=__tls_base",
+    "-Clink-arg=--export=__heap_base",
 ]
 # Ciantic: Tested +simd128 22.7.2021, didn't work! Got some wasm-opt problems.
 # 2024-10-01 - It now works, but threading works without it. So probably best to wait for it to stabilize.

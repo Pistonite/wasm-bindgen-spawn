@@ -1,0 +1,1 @@
+export { dispatcherBuilder as default } from "./createDispatcher";

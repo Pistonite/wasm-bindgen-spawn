@@ -22,9 +22,9 @@ thread_local! {
 }
 
 #[wasm_bindgen]
-pub async fn init_wasm_module() {
+pub async fn init_wasm_module(wasm_url: String, wbg_url: String) {
     console_error_panic_hook::set_once();
-    let thread_creator = match ThreadCreator::unready("pkg/example_bg.wasm", "pkg/example.js") {
+    let thread_creator = match ThreadCreator::unready(&wasm_url, &wbg_url) {
         Ok(v) => v,
         Err(e) => {
             log_str("Failed to create thread creator");

@@ -27,5 +27,7 @@ wasm-bindgen = "0.2.106"
 wasm-bindgen-futures = { version = "0.4.56", optional = true }
 
 [features]
-default = ["async"]
+default = ["no-modules", "async"]
 async = ["wasm-bindgen-futures"]
+web = []
+no-modules = []
