@@ -1,0 +1,19 @@
+# see /cargo_config_sot.toml
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "target-feature=+atomics",
+    "-Clink-args=--shared-memory",
+    "-Clink-args=--import-memory",
+    "-Clink-args=--max-memory=1073741824",
+    "-Clink-args=--export=__wasm_init_tls",
+    "-Clink-args=--export=__tls_size",
+    "-Clink-args=--export=__tls_align",
+    "-Clink-args=--export=__tls_base",
+    "-Clink-args=--export=__heap_base",
+    "-C", "panic=unwind"
+]
+[unstable]
+build-std = ["panic_unwind", "std"]
+
+[profile.release]
+panic = "unwind"

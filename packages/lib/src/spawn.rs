@@ -4,8 +4,8 @@ use std::sync::mpsc;
 
 use js_sys::{Function, Promise};
 use wasm_bindgen::JsCast;
-#[cfg(feature = "async")]
 use wasm_bindgen::JsValue;
+// #[cfg(feature = "async")]
 
 use crate::util::{BoxClosure, DispatchPayload, DispatchSender, SpawnError};
 use crate::{JoinHandle, binding};
@@ -228,6 +228,7 @@ impl ThreadCreator {
             Box::new(f()).into()
         }))
     }
+
     /// Spawn a new thread to execute F.
     ///
     /// Note that spawning new thread is very slow. Pool them if you can.

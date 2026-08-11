@@ -1,0 +1,29 @@
+# This serves as the source of truth of what the .cargo/config.toml
+# should look like
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "target-feature=+atomics",
+    "-Clink-args=--shared-memory",
+    "-Clink-args=--import-memory",
+    "-Clink-args=--max-memory=1073741824",
+    "-Clink-args=--export=__wasm_init_tls",
+    "-Clink-args=--export=__tls_size",
+    "-Clink-args=--export=__tls_align",
+    "-Clink-args=--export=__tls_base",
+
+    # -- remove below if you don't want panic=unwind
+    # -- See https://wasm-bindgen.github.io/wasm-bindgen/reference/catch-unwind.html
+    "-Cpanic=unwind"
+]
+# Ciantic: Tested +simd128 22.7.2021, didn't work! Got some wasm-opt problems.
+# 2024-10-01 - It now works, but threading works without it. So probably best to wait for it to stabilize.
+# 2025-06-12 - mutable-globals is enabled by default, and bulk-memory is enabled by default on Rust 1.87+
+# 2025-10-02 - rust now requires extra -Clink-args to enable shared-memory, see https://github.com/rust-lang/rust/pull/147225
+
+# -- remove below if you don't want panic=unwind
+[unstable]
+build-std = ["panic_unwind", "std"]
+
+[profile.release]
+panic = "unwind"

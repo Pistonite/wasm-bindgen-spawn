@@ -19,13 +19,13 @@ include = [
 ]
 
 [dependencies]
-js-sys = "0.3.103"
+js-sys = "0.3.104"
 oneshot = { version = "0.2.1", default-features = false, features = ["std"] }
 static_assertions = "1.1.0"
-thiserror = "2.0.18"
-wasm-bindgen = "0.2.126"
-wasm-bindgen-futures = { version = "0.4.76", optional = true }
+thiserror = "2.0.20"
+wasm-bindgen = "0.2.127"
+wasm-bindgen-futures = { version = "0.4.77", optional = true }
 
 [features]
-default = ["async"]
+default = []
 async = ["wasm-bindgen-futures"]

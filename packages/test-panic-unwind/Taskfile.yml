@@ -1,0 +1,22 @@
+version: '3'
+
+includes:
+  ecma:
+    taskfile: ./node_modules/mono-dev/task/ecma.yaml
+    internal: true
+    optional: true
+  cargo:
+    taskfile: ./node_modules/mono-dev/task/cargo.yaml
+    internal: true
+    optional: true
+
+tasks:
+  test:
+    - task: cargo:wasm-pack-build
+      vars:
+        TARGET_DIR: ../../target
+        PACKAGE: wasm_bindgen_spawn_test_panic_unwind
+        WASM_PACK_ARGS: -t no-modules --dev
+    - task: ecma:check
+  fix:
+    - task: ecma:fix

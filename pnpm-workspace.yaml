@@ -1,11 +1,13 @@
 minimumReleaseAgeExclude:
   - '@pistonite/*'
+
+allowBuilds:
+  esbuild: true
+
 packages:
   - example
   - packages/dispatcher
-onlyBuiltDependencies:
-  - esbuild
+  - packages/test-panic-unwind
+
 catalog:
   mono-dev: github:pistonight/mono-dev#dist
-allowBuilds:
-  esbuild: true

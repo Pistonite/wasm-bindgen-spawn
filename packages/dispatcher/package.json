@@ -12,7 +12,8 @@
     "exports": {
         "./create": "./src/create.ts",
         "./dispatcher": "./src/dispatcher.ts",
-        "./worker": "./src/worker.ts"
+        "./worker": "./src/worker.ts",
+        "./types": "./src/types.ts"
     },
     "pistonight/mono-dev": {
         "lib": true,
