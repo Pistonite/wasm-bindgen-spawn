@@ -1,6 +1,6 @@
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc;
+use std::sync::{Arc, mpsc};
 
 use js_sys::{Function, Promise};
 use wasm_bindgen::{JsCast, JsValue};
@@ -137,9 +137,10 @@ use crate::JoinHandle;
 ///     handle.join().unwrap();
 /// }
 /// ```
+#[derive(Clone)]
 pub struct ThreadCreator {
     /// Id for the next thread
-    next_id: AtomicUsize,
+    next_id: Arc<AtomicUsize>,
     /// Sender to send the thread closure to the dispatcher for creating threads
     send: DispatchSender,
 }
@@ -209,17 +210,35 @@ impl ThreadCreator {
             .dyn_into::<Promise>()?;
         Ok(ThreadCreatorUnready {
             thread_creator: Self {
-                next_id: AtomicUsize::new(1),
+                next_id: Arc::new(AtomicUsize::new(1)),
                 send,
             },
             dispatcher_promise: promise,
         })
     }
-
-    /// Spawn a new thread to execute F.
+    /// Spawn a new thread to execute F. Note that spawning a new thread is very 
+    /// slow, as it requires spinning up a new WebWorker. Pool the threads if you can.
     ///
-    /// Note that spawning a new thread is very slow, as it requires spinning up a new WebWorker. Pool the threads if you can.
-    pub fn spawn<F, T>(&self, f: F) -> Result<JoinHandle<T>, SpawnError>
+    /// Similar to [`std::thread::spawn`], this function may panic if the thread creation fails.
+    /// In this case it means the web worker for dispatching the threads has unexpectedly
+    /// terminated.
+    ///
+    /// Unlike the Std library, there is no `Builder` type - use [`try_spawn`](Self::try_spawn)
+    /// as the recoverable version
+    pub fn spawn<F, T>(&self, f: F) -> JoinHandle<T>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        match self.try_spawn(f) {
+            Ok(x) => x,
+            Err(e) => panic!("{e}")
+        }
+    }
+
+    /// Spawn a new thread to execute F. Note that spawning a new thread is very 
+    /// slow, as it requires spinning up a new WebWorker. Pool the threads if you can.
+    pub fn try_spawn<F, T>(&self, f: F) -> Result<JoinHandle<T>, SpawnError>
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,

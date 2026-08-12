@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
+    "packages/example",
     "packages/lib",
     "packages/test-panic-unwind",
 ]
+
+[workspace.dependencies]
+wasm-bindgen = "0.2.127"
+js-sys = "0.3.104"
+console_error_panic_hook = "0.1.7"

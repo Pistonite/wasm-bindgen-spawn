@@ -73,8 +73,7 @@ example!(example_join_handle, {
                 }
 
                 i * 3
-            })
-            .unwrap();
+            });
         handles.push(handle);
     }
 
@@ -99,8 +98,7 @@ example!(example_mpsc_channel, {
         tc.spawn(move || {
             log_str(&format!("Sending: {i}"));
             send.send(i).unwrap();
-        })
-        .unwrap();
+        });
     }
     drop(send);
     for i in recv {
@@ -120,8 +118,7 @@ example!(example_atomic_usize, {
         let h = tc
             .spawn(move || {
                 counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            })
-            .unwrap();
+            });
         handles.push(h);
     }
     let sum = counter.load(std::sync::atomic::Ordering::Relaxed);
@@ -153,8 +150,7 @@ example!(example_atomic_usize_pooled, {
                     counter.fetch_add(i, std::sync::atomic::Ordering::Relaxed);
                     log_str("incremented");
                 }
-            })
-            .unwrap();
+            });
         handles.push(h);
         senders.push(send);
     }
@@ -182,8 +178,7 @@ example!(example_sleep, {
                 log_str(&format!("Sleeping: {i}"));
                 std::thread::sleep(std::time::Duration::from_secs(1));
                 log_str(&format!("Woke up: {i}"));
-            })
-            .unwrap();
+            });
         handles.push(h);
     }
     log_str("Spawned all threads");
@@ -212,8 +207,7 @@ example!(example_mutex, {
                     // the following sleep to see interleaving with a lower count
                     // std::thread::sleep(std::time::Duration::from_millis(1));
                 }
-            })
-            .unwrap();
+            });
         handles.push(r);
     }
     for x in handles {
@@ -245,7 +239,6 @@ example!(example_mutex_poison, {
             v.push(1);
             panic!("This is a test panic");
         })
-        .unwrap()
     };
     match handle.join() {
         Ok(_) => log_str("Should see a panic but didn't"),

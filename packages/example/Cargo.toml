@@ -1,0 +1,11 @@
+[package]
+name = "example"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+js-sys.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-spawn.path = "../lib"
+console_error_panic_hook.workspace = true
