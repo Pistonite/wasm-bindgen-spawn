@@ -3,3 +3,4 @@ node_modules
 /tsconfig*.json
 /eslint.config.js
 .prettierignore
+*.gen.ts

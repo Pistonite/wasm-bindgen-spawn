@@ -1,11 +1,14 @@
-#[cfg(panic="unwind")]
 use std::any::Any;
 use std::marker::PhantomData;
 
-use crate::util::{Value, ValueReceiver};
+use crate::util::{Value, ValueReceiver, WorkerPanic};
 
 
 /// Handle for joining a thread
+///
+/// This can be used as a drop-in replacement for [`std::thread::JoinHandle`]
+/// as long as you are not calling `.thread()` (which currently doesn't have a good use case - 
+/// if you do have one please open an issue on GitHub).
 pub struct JoinHandle<T: Send + 'static> {
     id: usize,
     recv: ValueReceiver,
@@ -18,22 +21,21 @@ impl<T: Send + 'static> JoinHandle<T> {
             id, recv, _marker: PhantomData
         }
     }
-    /// Join the thread. Block the current thread until the thread is finished.
-    /// Returns the value returned by the thread closure.
+
+    /// Block the current thread until the thread is finished.
+    /// Returns the value returned by the closure that was used to spawn the thread.
+    ///
+    /// This function should expect similar behavior as [`std::thread::JoinHandle::join`]
+    ///
     ///
     /// # Note about panicking
-    /// If `panic=unwind`, the thread's panic is caught in `Err` and it can be handled
-    /// similar to [`std::thread::Result`](https://doc.rust-lang.org/std/thread/type.Result.html).
+    /// If `panic=abort`, the panic will still be caught and this function will return
+    /// `Err` with a generic message, instead of triggering another panic.
     ///
-    /// If `panic=abort`, or `panic=unwind` and a hard panic happened, this function panics
-    /// and the WASM instance maybe left in an inconsistent state and should not be used anymore.
-    ///
-    /// For more information about panics, please see the crate README.
-    #[cfg(panic="unwind")]
+    /// For more information on unwind and catching panics, see the [wasm-bindgen book](https://wasm-bindgen.github.io/wasm-bindgen/reference/catch-unwind.html)
+    /// or the crate's README.
     pub fn join(self) -> Result<T, Box<dyn Any + Send + 'static>> {
         // recv() will only error if somehow the thread terminated without sending a value
-
-        use crate::util::WorkerPanic;
         let value = match self.recv.recv() {
             Ok(x) => x,
             Err(_) => return Err(Box::new(format!("thread {} is disconnected", self.id))),
@@ -45,36 +47,12 @@ impl<T: Send + 'static> JoinHandle<T> {
                 return Err(e);
             }
             Err(WorkerPanic { payload: None }) => {
-                panic!("thread {} unrecoverably panicked!", self.id);
+                if cfg!(panic="unwind") {
+                    // please, see https://wasm-bindgen.github.io/wasm-bindgen/reference/handling-aborts.html
+                    return Err(Box::new(format!("thread {} encountered a non-recoverable hard abort!", self.id)))
+                }
+                return Err(Box::new(format!( "thread {} panicked or aborted!", self.id)))
             }
-        };
-        // safety: join handle created in spawn should have the same type T
-        let value: Box<T> = unsafe { value.into_box_unchecked() };
-        Ok(*value)
-    }
-
-    /// Join the thread. Block the current thread until the thread is finished.
-    /// Returns the value returned by the thread closure.
-    ///
-    /// # Note about panicking
-    /// If `panic=unwind`, the thread's panic is caught in `Err` and it can be handled
-    /// similar to [`std::thread::Result`](https://doc.rust-lang.org/std/thread/type.Result.html).
-    ///
-    /// If `panic=abort`, or `panic=unwind` and a hard panic happened, this function panics
-    /// and the WASM instance maybe left in an inconsistent state and should not be used anymore.
-    ///
-    /// For more information about panics, please see the crate README.
-    #[cfg(not(panic="unwind"))]
-    pub fn join(self) -> T {
-        // recv() will only error if somehow the thread terminated without sending a value
-        let value = match self.recv.recv() {
-            Ok(x) => x,
-            Err(_) => panic!("thread {} is disconnected", self.id),
-        };
-        // cast the value back from void* to Box<T>
-        let value: ValuePtr = match value {
-            Ok(x) => x,
-            Err(_) => panic!("thread {} panicked", self.id),
         };
         // safety: join handle created in spawn should have the same type T
         let value: Box<T> = unsafe { value.into_box_unchecked() };

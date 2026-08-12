@@ -8,8 +8,10 @@ includes:
 
 tasks:
   check:
+    - node build.ts
     - task: ecma:check
   fix:
     - task: ecma:fix
   build:
+    - node build.ts
     - task: ecma:lib-build

@@ -7,6 +7,9 @@ mod spawn;
 pub use spawn::{ThreadCreator,ThreadCreatorUnready};
 mod join;
 pub use join::JoinHandle;
+
+/// Interop with JS
 mod binding;
+
 mod util;
 pub use util::SpawnError;

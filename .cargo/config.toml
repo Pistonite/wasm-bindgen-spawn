@@ -1,0 +1,5 @@
+# this is mainly for rust-analyzer
+[build]
+rustflags = [
+    "--cfg=wasm_bindgen_use_js_sys"
+]

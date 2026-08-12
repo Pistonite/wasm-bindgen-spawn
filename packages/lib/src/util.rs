@@ -1,14 +1,17 @@
 use std::any::Any;
 use std::os::raw::c_void;
-#[cfg(panic="unwind")]
-use std::panic::UnwindSafe;
 use std::sync::mpsc;
 
 
 /// Error when joining a thread with a [`JoinHandle`]
 #[derive(Debug)]
 pub struct WorkerPanic {
-    // no payload is treated as a hard panic
+    /// The payload of panic from a worker thread
+    ///
+    /// In `panic=unwind`, there can still be [hard aborts](https://wasm-bindgen.github.io/wasm-bindgen/reference/catch-unwind.html#hard-aborts),
+    /// that will have a similar effect as `panic=abort`. In those cases,
+    /// the error will be propagated to JS as an exception, and `None`
+    /// will be sent to the thread's join handle
     pub payload: Option<Box<dyn Any + Send + 'static>>,
 }
 
@@ -19,6 +22,7 @@ pub enum SpawnError {
     Disconnected,
 }
 
+/// Wrapper for a heap allocated value
 pub struct Value {
     ptr: *mut c_void,
 }
@@ -38,9 +42,6 @@ impl Value {
 }
 
 pub type WorkerResult = Result<Value, WorkerPanic>;
-#[cfg(panic="unwind")]
-pub type BoxClosure = Box<dyn FnOnce() -> Value + UnwindSafe+ Send + 'static>;
-#[cfg(not(panic="unwind"))]
 pub type BoxClosure = Box<dyn FnOnce() -> Value + Send + 'static>;
 pub type ValueSender = oneshot::Sender<WorkerResult>;
 pub type ValueReceiver = oneshot::Receiver<WorkerResult>;

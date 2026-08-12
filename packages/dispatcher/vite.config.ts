@@ -29,7 +29,7 @@ const plugin: Plugin = {
 
 // using vite to minify (oxc) than use bun generates code that is a few bytes smaller
 const minify = (script: string): string => {
-    const output = child_process.execSync("bun build --minify "+script, {encoding:"utf8"});
+    const output = child_process.execSync("bun build --minify " + script, { encoding: "utf8" });
     if (output.includes("`")) {
         throw new Error("unexpected backtick in output; the script is not safe to embed");
     }

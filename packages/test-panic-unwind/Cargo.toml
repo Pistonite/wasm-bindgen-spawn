@@ -8,8 +8,7 @@ publish = false
 [dependencies]
 js-sys = "0.3.104"
 wasm-bindgen = "0.2.127"
-wasm-bindgen-spawn = { path = "../lib", features = ["async"] }
-wasm-bindgen-futures = "0.4.77"
+wasm-bindgen-spawn.path = "../lib"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
