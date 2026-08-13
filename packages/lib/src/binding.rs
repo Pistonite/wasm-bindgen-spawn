@@ -3,7 +3,7 @@ use std::ptr::NonNull;
 
 use wasm_bindgen::prelude::*;
 
-use crate::util::{BoxClosure, DispatchReceiver, SignalReceiver, SignalSender, ValueSender, WorkerPanic};
+use crate::util::{self, BoxClosure, DispatchReceiver, SignalReceiver, SignalSender, ValueSender, WorkerPanic};
 
 #[wasm_bindgen]
 extern "C" {
@@ -94,7 +94,7 @@ pub fn __pistonite_wbgspawn_worker_main(
     // in _dispatch_recv, where into_js is called
     let send = unsafe { from_js(maybe_moves_send) };
     // there's not much we can do if the join handle was dropped
-    let _ = send.send(result);
+    let _ = send.0.send(result);
 }
 
 /// Notify the join handle that the worker has unrecoverably (hard) panicked
@@ -104,7 +104,7 @@ pub fn __pistonite_wbgspawn_worker_send_panic(send: NonNull<ValueSender>) {
     // safety: the value sender/receiver channel is only created
     // in _dispatch_recv, where into_js is called
     let send = unsafe { from_js(send) };
-    let _ = send.send(Err(WorkerPanic { payload: None }));
+    let _ = send.0.send(Err(WorkerPanic { payload: None }));
 }
 
 /// Send a signal
@@ -117,7 +117,7 @@ pub fn __pistonite_wbgspawn_worker_send_panic(send: NonNull<ValueSender>) {
 pub fn __unsafe_pistonite_wbgspawn_send_signal(moves_signal: NonNull<SignalSender>) {
     // safety: callers need to guarantee signal is from an into_js call
     let send = unsafe { from_js(moves_signal) };
-    let _ = send.send(());
+    let _ = send.0.send(());
 }
 
 /// Return true if signal is received; drops the receiver if received
@@ -155,7 +155,7 @@ pub fn __pistonite_wbgspawn_dispatch_recv(recv: NonNull<DispatchReceiver>) -> Op
     };
 
     // note that f_ptr is double-boxed because a Box<dyn> is a fat pointer
-    let (start_send, start_recv) = oneshot::channel::<()>();
+    let (start_send, start_recv) = util::assert_unwind_safe_oneshot_channel::<()>();
 
     let request = js_arg_vec!{
         [

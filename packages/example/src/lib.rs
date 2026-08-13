@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::{any::Any, cell::OnceCell};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_spawn::ThreadCreator;
@@ -55,6 +55,7 @@ pub async fn init_thread_creator() -> bool {
     true
 }
 
+#[wasm_bindgen]
 pub fn example_join_handle() {
     let mut handles = vec![];
     for i in 1..=5 {
@@ -82,3 +83,14 @@ pub fn example_join_handle() {
     }
 
 }
+
+fn best_effort_panic_info<'a>(payload: &'a Box<dyn Any + Send + 'static>) -> &'a str {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        s
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.as_str()
+    } else {
+        "unknown panic info"
+    }
+}
+

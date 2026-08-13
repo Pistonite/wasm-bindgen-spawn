@@ -1,0 +1,6 @@
+version: '3'
+
+tasks:
+  build:
+    - RUST_LOG=debug wasm-pack build -t no-modules
+    

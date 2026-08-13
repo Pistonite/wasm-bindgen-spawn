@@ -16,6 +16,8 @@ rustflags = [
     "-Clink-args=--export=__heap_base",
 
     "-Cpanic=unwind",
+
+    "--cfg", "wasm_bindgen_use_js_sys",
 ]
 [unstable]
 build-std = ["panic_unwind", "std"]

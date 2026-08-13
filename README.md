@@ -81,8 +81,16 @@ Read the full article for more details on the implications of Cross-Origin Isola
 ### `wasm-pack` Target
 Currently, this library only supports the `no-modules` target:
 ```sh
-wasm-pack build -t no-modules
+wasm-pack build -t no-modules --panic-unwind
 ```
+Note: `wasm-pack 0.15.0` uses `binaryen v117` which does not implement
+the TryTable in DeadCodeElimination pass (fixed in `v119`). If you get an error
+`unimplemented DCE control flow structure`, install `wasm-pack`
+from the `master` branch or wait for `wasm-pack 0.16.0` (which uses `v130`)
+```
+cargo install wasm-pack --git https://github.com/wasm-bindgen/wasm-pack --branch master
+```
+
 
 ### WASM in Web Worker
 Since the main thread in web cannot block, you must use blocking operations in a 

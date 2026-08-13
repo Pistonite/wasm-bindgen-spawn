@@ -36,7 +36,7 @@ impl<T: Send + 'static> JoinHandle<T> {
     /// or the crate's README.
     pub fn join(self) -> Result<T, Box<dyn Any + Send + 'static>> {
         // recv() will only error if somehow the thread terminated without sending a value
-        let value = match self.recv.recv() {
+        let value = match self.recv.0.recv() {
             Ok(x) => x,
             Err(_) => return Err(Box::new(format!("thread {} is disconnected", self.id))),
         };

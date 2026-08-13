@@ -1,3 +1,4 @@
+use std::panic::AssertUnwindSafe;
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, mpsc};
@@ -5,7 +6,7 @@ use std::sync::{Arc, mpsc};
 use js_sys::{Function, Promise};
 use wasm_bindgen::{JsCast, JsValue};
 
-use crate::util::{BoxClosure, DispatchPayload, DispatchSender, SpawnError, DispatchReceiver, SignalReceiver, SignalSender};
+use crate::util::{self, BoxClosure, DispatchPayload, DispatchReceiver, DispatchSender, SignalReceiver, SignalSender, SpawnError};
 use crate::binding::{self, js_arg_vec, WasmBindgenExport____unsafe_pistonite_wbgspawn_poll_signal, WebAssembly__Memory};
 use crate::JoinHandle;
 
@@ -186,7 +187,7 @@ impl ThreadCreator {
         let create_dispatcher =
             Function::new_with_args("ARGS", include_str!("dispatcher.js"));
         let (send, recv) = mpsc::channel::<DispatchPayload>();
-        let (signal_send, signal_recv) = oneshot::channel::<()>();
+        let (signal_send, signal_recv) = util::assert_unwind_safe_oneshot_channel::<()>();
 
         type ThreadCreatorArgs = Vec<JsValue>;
         let creator_args = js_arg_vec!{
@@ -244,13 +245,17 @@ impl ThreadCreator {
         T: Send + 'static,
     {
         let f_boxed: BoxClosure = 
-        Box::new(move || {
+        // assert unwind safety here only to work around wasm_bindgen's 
+        // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
+        // See _worker_main for explanation of how unwind safety works in this model
+        // of threading
+        AssertUnwindSafe(Box::new(move || {
             Box::new(f()).into()
-        });
+        }));
         let next_id = self
             .next_id
             .fetch_add(1, Ordering::Relaxed);
-        let (send, recv) = oneshot::channel();
+        let (send, recv) = util::assert_unwind_safe_oneshot_channel();
         self.send
             .send((f_boxed, send))
             .map_err(|_| SpawnError::Disconnected)?;

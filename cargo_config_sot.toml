@@ -16,6 +16,15 @@ rustflags = [
 
     # -- remove below if you don't want panic=unwind
     # -- See https://wasm-bindgen.github.io/wasm-bindgen/reference/catch-unwind.html
+    # -- Also need to to pass --enable-exception-handling to wasm-opt:
+    #
+    # [package.metadata.wasm-pack.profile.dev]
+    # wasm-opt = ['--enable-exception-handling']
+    # [package.metadata.wasm-pack.profile.release]
+    # wasm-opt = ['--enable-exception-handling', '-O']
+    #
+    # DO NOT pass --panic-unwind to wasm-pack because it will override
+    # other RUSTFLAGS needed for threading support
     "-Cpanic=unwind"
 ]
 
