@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "packages/example",
     "packages/lib",
-    "packages/test-panic-unwind",
 ]
 
 [workspace.dependencies]

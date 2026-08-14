@@ -1,57 +1,89 @@
-import type { ThreadCreatorArgs } from "./binding.gen.ts";
+import { WBG_TARGET_NO_MODULES, WBG_TARGET_WEB, type ThreadCreatorArgs } from "./binding.gen.ts";
+import { createWorker } from "./shared.ts";
 import type { DispatcherInitMessage } from "./types.ts";
+
 // this is what's received from Rust, see ThreadCreator::unready
 declare const ARGS: ThreadCreatorArgs;
+
 // these are injected by build script, see vite.config.ts
+// see dispatcher.ts for the dispatcher worker implementation
 declare const DISPATCHER_JS: string;
+
 // these are injected by build script, see vite.config.ts
+// see worker.ts for the dispatcher worker implementation
 declare const WORKER_JS: string;
-// this is to emulate top level return; i.e. this file
-// is passed to the function contructor
-declare let RETURN: Promise<void>;
-// eslint-disable-next-line
-RETURN = (async function () {
-    const wbg = await (await fetch(ARGS[1])).text();
-    const DISPATCHER = wbg + DISPATCHER_JS;
-    const dispatcherUrl = URL.createObjectURL(new Blob([DISPATCHER], { type: "text/javascript" }));
-    const WORKER = wbg + WORKER_JS;
-    const workerUrl = URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }));
-    const wasm = await (await fetch(ARGS[0])).arrayBuffer();
-    const memory = ARGS[2];
-    const recv = ARGS[3];
-    const start_send = ARGS[4];
-    const start_recv = ARGS[5];
-    const poll_signal_fn = ARGS[6];
-    const dispatcher = new Worker(dispatcherUrl);
-    // see dispatcher.ts for the dispatcher worker implementation
+
+declare let __return: Promise<void>;
+// eslint-disable-next-line prefer-const
+__return = (async () => {
+    const blobUrls: string[] = [];
+    const jsSourceToUrl = (x: string) => {
+        return URL.createObjectURL(new Blob([x], {type: "text/javascript"}));
+    };
+    // create the JS sources
+    const [bg_target, bg_js, wasm_module, memory, recv, start_send] = ARGS;
+    let useESWorker = false;
+    let workerSource: string;
+    let dispatcherSource: string;
+    switch (bg_target) {
+        case WBG_TARGET_NO_MODULES: {
+            // no-modules target format is let wasm_bindgen = /* ... */;
+            // we can inline directly into the worker scripts
+            workerSource = `${bg_js}\n${WORKER_JS}_m(wasm_bindgen)`;
+            dispatcherSource = `${bg_js}\n${DISPATCHER_JS}_m(wasm_bindgen)`;
+            break;
+        }
+        case WBG_TARGET_WEB: {
+            // web target format is ESM
+            const bgJsUrl = jsSourceToUrl(bg_js);
+            blobUrls.push(bgJsUrl);
+
+            const workerInitArgsExpr = `import(${JSON.stringify(bgJsUrl)})`;
+            workerSource = `${WORKER_JS}_m(${workerInitArgsExpr})`;
+            dispatcherSource = `${DISPATCHER_JS}_m(${+workerInitArgsExpr})`;
+            // must use ES worker for the import expression
+            useESWorker = true;
+            break;
+        }
+        default: {
+            throw new Error("(Unexpected) Invalid bg_target passed to wasm-bindgen-spawn thread creator");
+        }
+    }
+    const dispatcherUrl = jsSourceToUrl(dispatcherSource);
+    if (__DEBUG__) {
+        console.log("creating dispatcher worker");
+    }
+    const dispatcher = await createWorker(dispatcherUrl, useESWorker);
     await new Promise<void>((resolve) => {
-        dispatcher.onmessage = ({ data }) => {
+        dispatcher.listen((data) => {
             if (data) {
+                if (__DEBUG__) {
+                    console.log("dispatcher worker ready");
+                }
                 // WORKER_MSG_READY, the dispatcher worker started
                 // and we can send the message to initialize the dispatcher
                 resolve();
                 dispatcher.postMessage({
                     recv,
                     start_send,
-                    url: workerUrl,
+                    script: workerSource,
                     memory,
-                    wasm,
+                    wasm: wasm_module,
+                    useESWorker,
                 } satisfies DispatcherInitMessage);
+                // now that the dispatcher is running, the code for the dispatcher
+                // can be freed
+                URL.revokeObjectURL(dispatcherUrl);
                 return;
+            }
+            if (__DEBUG__) {
+                console.log("terminating dispatcher on: "+data);
             }
             // WORKER_MSG_SUCCESS, the ThreadCreator is dropped
             // and no more threads can be created, terminate the dispatcher
             // and clean up
-            URL.revokeObjectURL(dispatcherUrl);
-            URL.revokeObjectURL(workerUrl);
+            blobUrls.forEach((x) =>URL.revokeObjectURL(x));
             dispatcher.terminate();
-        };
+        });
     });
-    // we need to poll the signal to ensure the postMessage
-    // has fired and the dispatcher is now blocked on waiting for spawn requests.
-    // Otherwise, this context can be blocked by caller and dispatcher never
-    // receives the initialize message
-    while (!poll_signal_fn(start_recv)) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-    }
 })();

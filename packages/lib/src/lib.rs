@@ -4,7 +4,7 @@ compile_error!(
 );
 
 mod spawn;
-pub use spawn::{ThreadCreator,ThreadCreatorUnready};
+pub use spawn::{ThreadCreatorInit, init_bg_no_modules, init_bg_web, spawn, try_spawn, terminate_dispatcher};
 mod join;
 pub use join::JoinHandle;
 
@@ -13,3 +13,4 @@ mod binding;
 
 mod util;
 pub use util::SpawnError;
+

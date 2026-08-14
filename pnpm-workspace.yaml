@@ -5,9 +5,11 @@ allowBuilds:
   esbuild: true
 
 packages:
-  - example
+  # - example
   - packages/dispatcher
-  - packages/test-panic-unwind
+  - packages/test
+  # - packages/test-panic-unwind
 
 catalog:
   mono-dev: github:pistonight/mono-dev#dist
+  '@types/node': ^24

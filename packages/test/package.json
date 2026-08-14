@@ -1,0 +1,16 @@
+{
+    "name": "wasm-bindgen-spawn-test",
+    "version": "0.0.0",
+    "type": "module",
+    "private": true,
+    "description": "tests for wasm-bindgen-spawn the wasm threading library with shared memory",
+    "license": "MIT",
+    "dependencies": {
+        "mono-dev": "catalog:",
+        "@types/node": "catalog:"
+    },
+    "pistonight/mono-dev": {
+        "publish": false
+    },
+    "imports": {}
+}

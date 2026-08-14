@@ -36,7 +36,7 @@ rustflags = [
 # 2025-10-02 - rust now requires extra -Clink-args to enable shared-memory, see https://github.com/rust-lang/rust/pull/147225
 # 2026-08-11 - Since WBG 0.2.122 / Rust nighty 2026-05-06, __heap_base needs to be explicitly exported.
 
-# -- remove below if you don't want panic=unwind
+# -- remove "panic_unwind" below if you don't want panic=unwind
 [unstable]
 build-std = ["panic_unwind", "std"]
 

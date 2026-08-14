@@ -10,14 +10,13 @@ const plugin: Plugin = {
     apply: "build",
     closeBundle: () => {
         const distDir = path.resolve(import.meta.dirname, "dist");
+        const dispatcherCode = wrapExport(bundle(path.join(distDir, "dispatcher.js")));
+        const dispatcherExpr = JSON.stringify(dispatcherCode);
+        const workerCode = wrapExport(bundle(path.join(distDir, "worker.js")));
+        const workerExpr = JSON.stringify(workerCode);
+        const createCode = bundle(path.join(distDir, "create.js"));
         const output =
-            "let RETURN;let DISPATCHER_JS=`" +
-            minify(path.join(distDir, "dispatcher.js")) +
-            "`;let WORKER_JS=`" +
-            minify(path.join(distDir, "worker.js")) +
-            "`;" +
-            minify(path.join(distDir, "create.js")) +
-            "return RETURN";
+            `let __return,DISPATCHER_JS=${dispatcherExpr},WORKER_JS=${workerExpr};${createCode};return __return;`;
         fs.writeFileSync(
             path.resolve(import.meta.dirname, "..", "lib", "src", "dispatcher.js"),
             output,
@@ -27,15 +26,17 @@ const plugin: Plugin = {
     },
 };
 
-// using vite to minify (oxc) than use bun generates code that is a few bytes smaller
-const minify = (script: string): string => {
-    const output = child_process.execSync("bun build --minify " + script, { encoding: "utf8" });
-    if (output.includes("`")) {
-        throw new Error("unexpected backtick in output; the script is not safe to embed");
-    }
-    return output;
+const bundle = (script: string): string => {
+    // using bun to post process vite's output to bundle the chunks into one js file
+    return child_process.execSync("bun build --minify " + script, { encoding: "utf8" });
 };
+const wrapExport = (script: string): string => {
+    return `const _m=(()=>{let __export;${script};return __export})();`;
+}
 
 export default <UserConfig>configure({
     plugins: [plugin],
+    define: {
+        __DEBUG__: true
+    }
 });

@@ -7,30 +7,12 @@ use crate::util::{self, BoxClosure, DispatchReceiver, SignalReceiver, SignalSend
 
 #[wasm_bindgen]
 extern "C" {
-    /// Binding to wasm.memory
-    ///
-    /// This depends on the `let wasm` generated in wbg's glue JS code
-    #[wasm_bindgen(js_name = memory, js_namespace = wasm, thread_local_v2)]
-    static MEMORY: JsValue;
-    /// Binding to the exported _poll_signal function
-    #[wasm_bindgen(js_name = __unsafe_pistonite_wbgspawn_poll_signal, js_namespace = wasm_bindgen, thread_local_v2)]
-    static POLL_SIGNAL: JsValue;
-}
-#[allow(non_camel_case_types)]
-pub type WebAssembly__Memory = JsValue;
-#[allow(non_camel_case_types)]
-pub type WasmBindgenExport____unsafe_pistonite_wbgspawn_poll_signal = JsValue;
-
-/// Get the memory object of the current WASM instance
-pub fn get_wasm_memory() -> WebAssembly__Memory {
-    // safety: depends on `let wasm` symbol
-    MEMORY.with(|x| x.clone())
-}
-
-/// Get the _poll_signal function instance in the current WASM instance
-pub fn get_poll_signal_fn() -> WasmBindgenExport____unsafe_pistonite_wbgspawn_poll_signal {
-    // safety: depends on __unsafe_pistonite_wbgspawn_poll_signal
-    POLL_SIGNAL.with(|x| x.clone())
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &JsValue);
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_str(s: &str);
+    #[wasm_bindgen(js_namespace = console)]
+    fn error(s: &JsValue);
 }
 
 /// Helper to generate a binding
@@ -51,6 +33,11 @@ macro_rules! js_arg_vec {
 }
 pub(crate) use js_arg_vec;
 
+macro_rules! js_type {
+    ($($arg:tt)*) => { wasm_bindgen::JsValue };
+}
+pub(crate) use js_type;
+
 /// Main function of the worker thread
 ///
 /// If this returns normally, the thread's result (value or captured panic in `panic=unwind`)
@@ -62,7 +49,7 @@ pub(crate) use js_arg_vec;
 /// since those states are internal to this library. the dispatcher who held a reference
 /// to the value sender will then report the panic to the join handle.
 #[doc(hidden)]
-#[wasm_bindgen]
+#[wasm_bindgen(skip_typescript)]
 pub fn __pistonite_wbgspawn_worker_main(
     moves_f: NonNull<BoxClosure>, 
     maybe_moves_send: NonNull<ValueSender>,
@@ -99,7 +86,7 @@ pub fn __pistonite_wbgspawn_worker_main(
 
 /// Notify the join handle that the worker has unrecoverably (hard) panicked
 #[doc(hidden)]
-#[wasm_bindgen]
+#[wasm_bindgen(skip_typescript)]
 pub fn __pistonite_wbgspawn_worker_send_panic(send: NonNull<ValueSender>) {
     // safety: the value sender/receiver channel is only created
     // in _dispatch_recv, where into_js is called
@@ -113,36 +100,44 @@ pub fn __pistonite_wbgspawn_worker_send_panic(send: NonNull<ValueSender>) {
 /// Caller must ensure `moves_signal` is obtained from `into_js` somewhere,
 /// and the pointer is dangling after calling this function
 #[doc(hidden)]
-#[wasm_bindgen]
+#[wasm_bindgen(skip_typescript)]
 pub fn __unsafe_pistonite_wbgspawn_send_signal(moves_signal: NonNull<SignalSender>) {
+    // log_str("sending signal");
     // safety: callers need to guarantee signal is from an into_js call
     let send = unsafe { from_js(moves_signal) };
+    // log_str("sending signal: cast ok");
     let _ = send.0.send(());
+    log_str("signal sent");
 }
 
-/// Return true if signal is received; drops the receiver if received
+/// Return true if signal is received or sender is dropped; drops the receiver if received
+/// or sender is dropped
 ///
 /// # Safety
-/// Caller must ensure `maybe_moves_signal` is obtained from `into_js` somewhere,
-/// and the pointer is dangling after calling this function if and only if
-/// this function returns true
+/// Caller must ensure `maybe_moves_signal` is obtained from `into_js` somewhere.
+/// If this function returns true, the pointer becomes danglign and must never
+/// be used again.
 #[doc(hidden)]
-#[wasm_bindgen]
+#[wasm_bindgen(skip_typescript)]
 pub fn __unsafe_pistonite_wbgspawn_poll_signal(maybe_moves_signal: NonNull<SignalReceiver>) -> bool {
     // safety: callers need to guarantee signal is from an into_js call
-    if unsafe { maybe_moves_signal.as_ref() }.try_recv().is_ok() {
-        // safety: callers need to guarantee signal is from an into_js call
-        let recv = unsafe { from_js(maybe_moves_signal) };
-        drop(recv);
-        true
-    } else {
-        false
+    let result = unsafe { maybe_moves_signal.as_ref() }.try_recv();
+    match result {
+        Err(oneshot::TryRecvError::Empty) => {
+            false
+        },
+        _ => {
+                // safety: callers need to guarantee signal is from an into_js call
+                let recv = unsafe { from_js(maybe_moves_signal) };
+                drop(recv);
+                true
+        }
     }
 }
 
 /// Receive a request to spawn a thread with the dispatcher.
 #[doc(hidden)]
-#[wasm_bindgen]
+#[wasm_bindgen(skip_typescript)]
 pub fn __pistonite_wbgspawn_dispatch_recv(recv: NonNull<DispatchReceiver>) -> Option<DispatchThreadRequest> {
     
     // safety: the dispatcher sender/receiver channel is only created/used
@@ -174,7 +169,7 @@ pub type DispatchThreadRequest = Vec<JsValue>;
 
 /// Drop the receiver
 #[doc(hidden)]
-#[wasm_bindgen]
+#[wasm_bindgen(skip_typescript)]
 pub fn __pistonite_wbgspawn_dispatch_drop(recv: NonNull<DispatchReceiver>) {
     // safety: the dispatcher sender/receiver channel is only created/used
     // in ThreadCreator::unready and dispatcher.ts. ThreadCreator creates
@@ -196,3 +191,9 @@ pub unsafe fn from_js<T>(nonnull_ptr: NonNull<T>) -> Box<T> {
     // safety: since nonnull_ptr is returned from into_js it's called with into_raw
     unsafe { Box::from_raw(ptr) }
 }
+
+/// Constant value for the "no-modules" target in wasm_bindgen
+pub const WBG_TARGET_NO_MODULES: u32 = 1;
+
+/// Constant value for the "web" target in wasm_bindgen
+pub const WBG_TARGET_WEB: u32 = 2;

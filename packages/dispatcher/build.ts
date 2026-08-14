@@ -18,6 +18,7 @@ const main = (): number => {
     }
     const binding_file_lines = fs.readFileSync(RUST_BINDING, { encoding: "utf8" }).split("\n");
     const export_decls = parse_extern_block_in_binding_file(binding_file_lines);
+    const export_consts = parse_export_constants(binding_file_lines);
     const export_funcs = parse_export_functions(binding_file_lines);
 
     const js_arg_types: JsArgType[] = [];
@@ -38,23 +39,21 @@ const main = (): number => {
         "// section: extern block",
         ...export_decls.map((x) => `export type WasmBindgenExport__${x} = WasmBindgen["${x}"]`),
         "",
+        "// section: constants",
+    ];
+    for (const { doc, ident, ty, expr } of export_consts) {
+        output.push(...format_doc(doc, ""));
+        output.push(`export const ${ident}: ${ty} = ${expr};`);
+    }
+    output.push(
+        "",
         "// section: wasm bindgen exports",
         "export interface WasmBindgen {",
-        "    /** The wasm_bindgen init function */",
-        `    (init: { memory: WebAssembly.Memory; module_or_path: WebAssembly.Module }): Promise<void>;`,
-    ];
+    );
 
     for (const { doc, ident, args, retty } of export_funcs) {
         output.push("");
-        if (doc.length <= 1) {
-            output.push(`    /** ${doc.join("")} */`);
-        } else {
-            output.push("    /**");
-            for (const line of doc) {
-                output.push(`     * ${line.trim()}`);
-            }
-            output.push("     */");
-        }
+        output.push(...format_doc(doc, "    "));
         output.push(`    ${ident}(`);
         for (const { ident, ty } of args) {
             output.push(`        ${ident}: ${ty},`);
@@ -127,24 +126,24 @@ const parse_export_functions = (binding_file_lines: string[]) => {
     let i = 0;
 
     const out: WasmBindgenExportFunction[] = [];
-    for (; i < binding_file_lines.length - 1; i++) {
+    for (; i < binding_file_lines.length; i++) {
         const doc: string[] = [];
-        for (; i < binding_file_lines.length - 1; i++) {
+        for (; i < binding_file_lines.length; i++) {
             const line = binding_file_lines[i].trim();
             if (line.startsWith("///")) {
                 break;
             }
         }
-        for (; i < binding_file_lines.length - 1; i++) {
+        for (; i < binding_file_lines.length ; i++) {
             const line = binding_file_lines[i].trim();
             if (!line.startsWith("///")) {
                 break;
             }
             doc.push(line.substring(3).trim());
         }
-        for (; i < binding_file_lines.length - 1; i++) {
+        for (; i < binding_file_lines.length ; i++) {
             const line = binding_file_lines[i].trim();
-            if (line === "#[wasm_bindgen]") {
+            if (line === "#[wasm_bindgen(skip_typescript)]") {
                 break;
             }
         }
@@ -153,7 +152,7 @@ const parse_export_functions = (binding_file_lines: string[]) => {
             continue;
         }
         let fn_item = "";
-        for (; i < binding_file_lines.length - 1; i++) {
+        for (; i < binding_file_lines.length ; i++) {
             const line = binding_file_lines[i].trim();
             fn_item += line;
             if (line.endsWith("{")) {
@@ -166,9 +165,9 @@ const parse_export_functions = (binding_file_lines: string[]) => {
         }
         // console.log("parsing fn: " + fn_item);
         const [ident_part, arg_part] = parts[0].split("(", 2);
-        const retty = parts[1] ? trimEndWhitespaceAnd(parts[1], "{") : "void";
+        const retty = parts[1] ? trim_end_white_and(parts[1], "{") : "void";
         const ident = ident_part.trim().substring("pub fn ".length).trim();
-        const args = trimEndWhitespaceAnd(trimEndWhitespaceAnd(arg_part, "{"), ")").split(",");
+        const args = trim_end_white_and(trim_end_white_and(arg_part, "{"), ")").split(",");
         const arg_parsed: WasmBindgenExportFunction["args"] = [];
         for (const arg of args) {
             if (!arg.trim()) {
@@ -180,10 +179,9 @@ const parse_export_functions = (binding_file_lines: string[]) => {
             if (!ty_trimmed.startsWith("NonNull<") || !ty_trimmed.endsWith(">")) {
                 throw new Error("currently we only support NonNull in WASM API");
             }
-            const inner = ty_trimmed.substring("NonNull<".length, ty_trimmed.length - 1).trim();
             arg_parsed.push({
                 ident: ident.trim(),
-                ty: `NonNull<"${inner}">`,
+                ty: parse_rust_type(ty_trimmed)
             });
         }
 
@@ -234,7 +232,7 @@ const parse_js_arg_vecs = (file_lines: string[]) => {
         const last_space_i = macro_invoke.lastIndexOf(" ");
         const ty_ident = macro_invoke.substring(last_space_i).trim();
         const as_i = macro_invoke.substring(0, last_space_i).lastIndexOf(" as");
-        const middle = trimEndWhitespaceAnd(
+        const middle = trim_end_white_and(
             macro_invoke.substring(0, as_i).trim().substring(1),
             "]",
         ).split(",");
@@ -245,18 +243,7 @@ const parse_js_arg_vecs = (file_lines: string[]) => {
             }
             const [ident_ty] = part.split("=", 2);
             const [ident, ty] = ident_ty.trim().split(":", 2);
-            const ty_trimmed = ty.trim();
-            let ty_parsed: string;
-            if (ty_trimmed === "&str") {
-                ty_parsed = "string";
-            } else if (ty_trimmed.startsWith("NonNull<") && ty_trimmed.endsWith(">")) {
-                const inner = ty_trimmed.substring("NonNull<".length, ty_trimmed.length - 1).trim();
-                ty_parsed = `NonNull<"${inner}">`;
-            } else if (ty_trimmed.startsWith("WasmBindgenExport__")) {
-                ty_parsed = ty_trimmed;
-            } else {
-                ty_parsed = ty_trimmed.replaceAll("__", ".");
-            }
+            const ty_parsed = parse_rust_type(ty.trim());
             elems.push({ ident: ident.trim(), ty: ty_parsed });
         }
 
@@ -266,7 +253,60 @@ const parse_js_arg_vecs = (file_lines: string[]) => {
     return out;
 };
 
-const trimEndWhitespaceAnd = (text: string, char: string): string => {
+interface Constant {
+    doc: string[],
+    ident: string,
+    ty: string,
+    expr: string
+}
+
+const parse_export_constants = (file_lines: string[]): Constant[] => {
+    const out: Constant[] = [];
+    let i = 0;
+
+    for (; i < file_lines.length; i++) {
+        const doc: string[] = [];
+        for (; i < file_lines.length; i++) {
+            const line = file_lines[i].trim();
+            if (line.startsWith("///")) {
+                break;
+            }
+        }
+        for (; i < file_lines.length ; i++) {
+            const line = file_lines[i].trim();
+            if (!line.startsWith("///")) {
+                break;
+            }
+            doc.push(line.substring(3).trim());
+        }
+        if (!file_lines[i]?.startsWith("pub const")) {
+            continue;
+        }
+        let const_item = "";
+        for (; i < file_lines.length ; i++) {
+            const line = file_lines[i].trim();
+            const_item += line;
+            if (line.endsWith(";")) {
+                break;
+            }
+        }
+        const_item = const_item.substring("pub const ".length);
+        const [ident, ty_and_value] = const_item.split(":", 2);
+        if (!ty_and_value) {
+            throw new Error("invalid const item: missing type: " + const_item);
+        }
+        const [ty, value] = ty_and_value.split("=", 2);
+        out.push({
+            doc,
+            ident: ident.trim(),
+            ty: parse_rust_type(ty.trim()),
+            expr: trim_end_white_and(value, ";"),
+        });
+    }
+    return out;
+}
+
+const trim_end_white_and = (text: string, char: string): string => {
     while (true) {
         const prev = text;
         if (text.endsWith(char)) {
@@ -278,5 +318,34 @@ const trimEndWhitespaceAnd = (text: string, char: string): string => {
         }
     }
 };
+
+const parse_rust_type = (ty: string): string => {
+    switch (ty) {
+        case "u32": return "number";
+    }
+    if (ty.startsWith("NonNull<") && ty.endsWith(">")) {
+        const inner = ty.substring("NonNull<".length, ty.length - 1).trim();
+        return `NonNull<"${inner}">`;
+    }
+
+    if (ty.startsWith("js_type!(") && ty.endsWith(")")) {
+        return ty.substring("js_type!(".length, ty.length - 1).trim();
+    }
+    return ty;
+}
+
+const format_doc = (doc: string[], indent: string): string[] => {
+    const output: string[] = [];
+    if (doc.length <= 1) {
+        output.push(`${indent}/** ${doc.join("")} */`);
+    } else {
+        output.push(`${indent}/**`);
+        for (const line of doc) {
+            output.push(`${indent} * ${line.trim()}`);
+        }
+        output.push(`${indent} */`);
+    }
+    return output;
+}
 
 main();

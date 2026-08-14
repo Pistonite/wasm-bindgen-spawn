@@ -1,4 +1,7 @@
-import type { NonNull } from "./binding.gen.ts";
+import type { NonNull, WasmBindgen } from "./binding.gen.ts";
+
+export type WasmBindgenInitFn = (init: { memory: WebAssembly.Memory; module: WebAssembly.Module }) => void;
+export type WorkerInitArgs = WasmBindgen & {initSync: WasmBindgenInitFn };
 
 /** Message posted from the dispatcher to the worker for initialization */
 export interface WorkerInitMessage {
@@ -20,14 +23,16 @@ export interface DispatcherInitMessage {
     recv: NonNull<"DispatchReceiver">;
     /** signal to indicate the dispatcher is ready */
     start_send: NonNull<"SignalSender">;
-    /** blob url for the worker */
-    url: string;
+    /** code to spawn workers */
+    script: string;
     /** memory for instantiating the wasm instance in this thread (dispatcher) */
     memory: WebAssembly.Memory;
     /** compiled module for instantiating the wasm instance in this thread (dispatcher) */
     wasm: WebAssembly.Module;
+    /** Create worker as ESM */
+    useESWorker: boolean;
 }
 
-export const WORKER_MSG_READY = 1;
-export const WORKER_MSG_SUCCESS = 0;
-export const WORKER_MSG_PANIC = 2;
+export const WORKER_MSG_READY: number = 1;
+export const WORKER_MSG_SUCCESS: number = 0;
+export const WORKER_MSG_PANIC: number = 2;

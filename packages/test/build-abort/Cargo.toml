@@ -1,0 +1,16 @@
+[package]
+name = "build-abort"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+example.path = "../../example"
+[features]
+no-wbg-module = ["example/no-wbg-module"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "lib.rs"
