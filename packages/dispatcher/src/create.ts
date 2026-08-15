@@ -1,5 +1,5 @@
 import { WBG_TARGET_NO_MODULES, WBG_TARGET_WEB, type ThreadCreatorArgs } from "./binding.gen.ts";
-import { createWorker } from "./shared.ts";
+import { createJsBlobUrl, createWorker } from "./shared.ts";
 import type { DispatcherInitMessage } from "./types.ts";
 
 // this is what's received from Rust, see ThreadCreator::unready
@@ -16,11 +16,6 @@ declare const WORKER_JS: string;
 declare let __return: Promise<void>;
 // eslint-disable-next-line prefer-const
 __return = (async () => {
-    const blobUrls: string[] = [];
-    const jsSourceToUrl = (x: string) => {
-        return URL.createObjectURL(new Blob([x], {type: "text/javascript"}));
-    };
-    // create the JS sources
     const [bg_target, bg_js, wasm_module, memory, recv, start_send] = ARGS;
     let useESWorker = false;
     let workerSource: string;
@@ -34,13 +29,17 @@ __return = (async () => {
             break;
         }
         case WBG_TARGET_WEB: {
-            // web target format is ESM
-            const bgJsUrl = jsSourceToUrl(bg_js);
-            blobUrls.push(bgJsUrl);
-
-            const workerInitArgsExpr = `import(${JSON.stringify(bgJsUrl)})`;
+            // web target format is ESM, we need to create a blob url
+            // inside the worker (since not all implementation allow accessing
+            // blob url created by another worker
+            const bgJsExpr = JSON.stringify(bg_js);
+            const workerInitArgsExpr = `
+(async()=>{
+const bg=URL.createObjectURL(new Blob([${bgJsExpr}], {type:"text/javascript"}));
+try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
+})()`;
             workerSource = `${WORKER_JS}_m(${workerInitArgsExpr})`;
-            dispatcherSource = `${DISPATCHER_JS}_m(${+workerInitArgsExpr})`;
+            dispatcherSource = `${DISPATCHER_JS}_m(${workerInitArgsExpr})`;
             // must use ES worker for the import expression
             useESWorker = true;
             break;
@@ -49,17 +48,13 @@ __return = (async () => {
             throw new Error("(Unexpected) Invalid bg_target passed to wasm-bindgen-spawn thread creator");
         }
     }
-    const dispatcherUrl = jsSourceToUrl(dispatcherSource);
-    if (__DEBUG__) {
-        console.log("creating dispatcher worker");
-    }
+    const dispatcherUrl = createJsBlobUrl(dispatcherSource);
+    await __debug("creating dispatcher worker");
     const dispatcher = await createWorker(dispatcherUrl, useESWorker);
     await new Promise<void>((resolve) => {
-        dispatcher.listen((data) => {
+        dispatcher.listen(async (data) => {
             if (data) {
-                if (__DEBUG__) {
-                    console.log("dispatcher worker ready");
-                }
+                await __debug("dispatcher worker ready");
                 // WORKER_MSG_READY, the dispatcher worker started
                 // and we can send the message to initialize the dispatcher
                 resolve();
@@ -76,14 +71,9 @@ __return = (async () => {
                 URL.revokeObjectURL(dispatcherUrl);
                 return;
             }
-            if (__DEBUG__) {
-                console.log("terminating dispatcher on: "+data);
-            }
-            // WORKER_MSG_SUCCESS, the ThreadCreator is dropped
-            // and no more threads can be created, terminate the dispatcher
-            // and clean up
-            blobUrls.forEach((x) =>URL.revokeObjectURL(x));
+            await __debug("terminating dispatcher worker");
             dispatcher.terminate();
         });
     });
+    await __debug("dispatcher worker created");
 })();

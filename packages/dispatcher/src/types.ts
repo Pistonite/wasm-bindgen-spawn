@@ -6,7 +6,7 @@ export type WorkerInitArgs = WasmBindgen & {initSync: WasmBindgenInitFn };
 /** Message posted from the dispatcher to the worker for initialization */
 export interface WorkerInitMessage {
     /** main rust closure to execute */
-    f: NonNull<"BoxClosure">;
+    f: NonNull<"ThreadProc">;
     /** sender for the return value */
     send: NonNull<"ValueSender">;
     /** sender for the start signal */

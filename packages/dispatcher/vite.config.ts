@@ -5,38 +5,63 @@ import child_process from "node:child_process";
 import type { Plugin, UserConfig } from "mono-dev/vite";
 import { configure } from "mono-dev/lib-build-config";
 
+const BUILD_DEBUG = !!process.env.BUILD_DEBUG;
+
 const plugin: Plugin = {
     name: "post-process",
     apply: "build",
     closeBundle: () => {
         const distDir = path.resolve(import.meta.dirname, "dist");
         const dispatcherCode = wrapExport(bundle(path.join(distDir, "dispatcher.js")));
-        const dispatcherExpr = JSON.stringify(dispatcherCode);
+        const dispatcherExpr = serializeCode(dispatcherCode);
         const workerCode = wrapExport(bundle(path.join(distDir, "worker.js")));
-        const workerExpr = JSON.stringify(workerCode);
+        const workerExpr = serializeCode(workerCode);
         const createCode = bundle(path.join(distDir, "create.js"));
         const output =
             `let __return,DISPATCHER_JS=${dispatcherExpr},WORKER_JS=${workerExpr};${createCode};return __return;`;
+        // ensure dead code elimination works
+        if (!BUILD_DEBUG) {
+            if (output.includes("[debug]")) {
+                throw new Error("unexpected debug tag found in output");
+            }
+            if (output.includes("fs")) {
+                throw new Error("unexpected fs tag found in output");
+            }
+            if (output.includes("console.log")) {
+                throw new Error("unexpected console.log found in output");
+            }
+        }
         fs.writeFileSync(
             path.resolve(import.meta.dirname, "..", "lib", "src", "dispatcher.js"),
             output,
         );
         const size = output.length;
-        console.log(`bundled script written to /packages/lib/src/dispatcher.js (${size} bytes)`);
+        console.log(`bundled script written to /packages/lib/src/dispatcher.js (${size} bytes ${BUILD_DEBUG ? "[DEBUG]" : ""})`);
     },
 };
 
 const bundle = (script: string): string => {
+    const command = BUILD_DEBUG ? "bun build " : "bun build --minify ";
     // using bun to post process vite's output to bundle the chunks into one js file
-    return child_process.execSync("bun build --minify " + script, { encoding: "utf8" });
+    return child_process.execSync(command + script, { encoding: "utf8" });
 };
 const wrapExport = (script: string): string => {
     return `const _m=(()=>{let __export;${script};return __export})();`;
+}
+const serializeCode = (code: string): string => {
+    if (!BUILD_DEBUG) {
+        return JSON.stringify(code);
+    }
+    const lines = code.split("\n");
+    return lines.map((x) => JSON.stringify(x)).join("+\n");
 }
 
 export default <UserConfig>configure({
     plugins: [plugin],
     define: {
-        __DEBUG__: true
+        __DEBUG__: true,
+        "import.meta.env.BUILD_DEBUG": BUILD_DEBUG,
+        __debug: BUILD_DEBUG ? `(await import('./shared.ts')).__debugImpl`
+            : `(function(){})`
     }
 });

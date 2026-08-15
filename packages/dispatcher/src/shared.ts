@@ -1,4 +1,7 @@
 
+export const createJsBlobUrl = (script: string): string => {
+    return URL.createObjectURL(new Blob([script], { type: "text/javascript" }));
+}
 
 export interface WorkerAdapter {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,9 +33,9 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
         const script = await (await fetch(url)).text();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const worker = new worker_threads.Worker(script, {eval: true}) as any;
-        if (__DEBUG__) {
-            worker.on("exit", () => {
-                console.log("worker thread exited");
+        if (import.meta.env.BUILD_DEBUG) {
+            worker.on("exit", async () => {
+                await __debugImpl("worker exit");
             });
         }
         return {
@@ -57,14 +60,45 @@ export const getWorkerGlobalScope = async () : Promise<WorkerGlobalScopeAdapter>
         const parentPort = worker_threads.parentPort;
         return {
             listen: (cb) => {
-                if (__DEBUG__) {
-                    console.log("attaching event listener to worker");
-                }
                 parentPort.on('message', cb);
             },
             postMessage: parentPort.postMessage.bind(parentPort),
         }
     } catch(e) {
         throw new Error("Failed to setup worker global scope", {cause: e});
+    }
+}
+
+export const __debugImpl = async (...x: unknown[]) => {
+    try {
+        const fs=await new Function("return import('fs')")();
+        for (const m of x){
+            if (typeof m === "string") {
+                try {
+                    fs.writeSync(process.stdout.fd, "[debug]"+m + "\n");
+                } catch {
+                    console.log(x);
+                }
+                continue;
+            }
+            try {
+                const mJson = JSON.stringify(m,undefined,2);
+                try {
+                    fs.writeSync(process.stdout.fd, "[debug]"+mJson + "\n");
+                } catch {
+                    console.log(x);
+                }
+                continue;
+            } catch {
+                const mStr = `${m}`;
+                try {
+                    fs.writeSync(process.stdout.fd, "[debug]"+mStr + "\n");
+                } catch {
+                    console.log(x);
+                }
+            }
+        }
+    } catch {
+        console.log(...x);
     }
 }

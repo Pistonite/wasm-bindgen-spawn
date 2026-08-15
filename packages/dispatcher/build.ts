@@ -165,7 +165,7 @@ const parse_export_functions = (binding_file_lines: string[]) => {
         }
         // console.log("parsing fn: " + fn_item);
         const [ident_part, arg_part] = parts[0].split("(", 2);
-        const retty = parts[1] ? trim_end_white_and(parts[1], "{") : "void";
+        const retty = parse_rust_type(parts[1] ? trim_end_white_and(parts[1], "{") : "void");
         const ident = ident_part.trim().substring("pub fn ".length).trim();
         const args = trim_end_white_and(trim_end_white_and(arg_part, "{"), ")").split(",");
         const arg_parsed: WasmBindgenExportFunction["args"] = [];
