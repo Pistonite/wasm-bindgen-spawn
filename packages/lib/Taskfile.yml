@@ -1,0 +1,11 @@
+version: '3'
+
+includes:
+  cargo:
+    taskfile: ../../node_modules/mono-dev/task/cargo.yaml
+    internal: true
+    optional: true
+
+tasks:
+  dev-doc:
+    - task: cargo:watch-serve-doc

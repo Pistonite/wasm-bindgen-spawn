@@ -12,7 +12,6 @@ extern "C" {
     fn error(s: &JsValue);
 }
 
-
 #[wasm_bindgen]
 pub async fn init_thread_creator(bg_js: JsValue, _wasm_module: JsValue) -> bool {
     console_error_panic_hook::set_once();
@@ -35,13 +34,13 @@ pub fn example_join_handle() {
     for i in 1..=5 {
         log_str(&format!("spawning: {i}"));
         let handle = wasm_bindgen_spawn::spawn(move || {
-                log_str(&format!("Worker {i} thread started"));
-                if i == 2 {
-                    panic!("Hey, I'm 2 (this is a test panic)");
-                }
+            log_str(&format!("Worker {i} thread started"));
+            if i == 2 {
+                panic!("Hey, I'm 2 (this is a test panic)");
+            }
 
-                i * 3
-            });
+            i * 3
+        });
         handles.push(handle);
     }
 
@@ -54,7 +53,6 @@ pub fn example_join_handle() {
             }
         }
     }
-
 }
 #[wasm_bindgen]
 pub fn uninit() {
@@ -70,4 +68,3 @@ fn best_effort_panic_info<'a>(payload: &'a Box<dyn Any + Send + 'static>) -> &'a
         "unknown panic info"
     }
 }
-

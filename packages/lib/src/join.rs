@@ -3,11 +3,10 @@ use std::marker::PhantomData;
 
 use crate::util::{Value, ValueReceiver, WorkerPanic};
 
-
 /// Handle for joining a thread
 ///
 /// This can be used as a drop-in replacement for [`std::thread::JoinHandle`]
-/// as long as you are not calling `.thread()` (which currently doesn't have a good use case - 
+/// as long as you are not calling `.thread()` (which currently doesn't have a good use case -
 /// if you do have one please open an issue on GitHub).
 pub struct JoinHandle<T: Send + 'static> {
     id: usize,
@@ -18,14 +17,16 @@ pub struct JoinHandle<T: Send + 'static> {
 impl<T: Send + 'static> JoinHandle<T> {
     pub(crate) fn new(id: usize, recv: ValueReceiver) -> Self {
         Self {
-            id, recv, _marker: PhantomData
+            id,
+            recv,
+            _marker: PhantomData,
         }
     }
 
     /// Block the current thread until the thread is finished.
-    /// Returns the value returned by the closure that was used to spawn the thread.
+    /// Returns the value returned by the threads' main closure/future.
     ///
-    /// This function should expect similar behavior as [`std::thread::JoinHandle::join`]
+    /// This function should behave similarly to [`std::thread::JoinHandle::join`]
     ///
     ///
     /// # Note about panicking
@@ -47,11 +48,14 @@ impl<T: Send + 'static> JoinHandle<T> {
                 return Err(e);
             }
             Err(WorkerPanic { payload: None }) => {
-                if cfg!(panic="unwind") {
-                    // please, see https://wasm-bindgen.github.io/wasm-bindgen/reference/handling-aborts.html
-                    return Err(Box::new(format!("thread {} encountered a non-recoverable hard abort!", self.id)))
+                if cfg!(panic = "unwind") {
+                    // see https://wasm-bindgen.github.io/wasm-bindgen/reference/handling-aborts.html
+                    return Err(Box::new(format!(
+                        "thread {} encountered a non-recoverable hard abort!",
+                        self.id
+                    )));
                 }
-                return Err(Box::new(format!( "thread {} panicked or aborted!", self.id)))
+                return Err(Box::new(format!("thread {} panicked or aborted!", self.id)));
             }
         };
         // safety: join handle created in spawn should have the same type T

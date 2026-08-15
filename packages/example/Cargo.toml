@@ -11,4 +11,4 @@ wasm-bindgen-spawn.path = "../lib"
 console_error_panic_hook.workspace = true
 
 [features]
-no-wbg-module = ["wasm-bindgen-spawn/no-wbg-module"]
+no-wbg-module = []
