@@ -70,31 +70,36 @@ export const getWorkerGlobalScope = async () : Promise<WorkerGlobalScopeAdapter>
 }
 
 export const __debugImpl = async (...x: unknown[]) => {
+    // using fs allows us to bypass the js event loop
+    // and make the messages appear more or less in the order they are logged
     try {
         const fs=await new Function("return import('fs')")();
         for (const m of x){
             if (typeof m === "string") {
                 try {
-                    fs.writeSync(process.stdout.fd, "[debug]"+m + "\n");
-                } catch {
-                    console.log(x);
+                    fs.writeSync(1, "[debug] "+m + "\n");
+                } catch(e) {
+                    console.error(e);
+                    console.log(m);
                 }
                 continue;
             }
             try {
                 const mJson = JSON.stringify(m,undefined,2);
                 try {
-                    fs.writeSync(process.stdout.fd, "[debug]"+mJson + "\n");
-                } catch {
-                    console.log(x);
+                    fs.writeSync(1, "[debug] "+mJson + "\n");
+                } catch(e) {
+                    console.error(e);
+                    console.log(m);
                 }
                 continue;
             } catch {
                 const mStr = `${m}`;
                 try {
-                    fs.writeSync(process.stdout.fd, "[debug]"+mStr + "\n");
-                } catch {
-                    console.log(x);
+                    fs.writeSync(1, "[debug] "+mStr + "\n");
+                } catch(e) {
+                    console.error(e);
+                    console.log(m);
                 }
             }
         }

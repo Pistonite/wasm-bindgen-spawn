@@ -7,16 +7,6 @@ use crate::util::{
     self, DispatchReceiver, SignalReceiver, SignalSender, ThreadProc, ValueSender, WorkerPanic,
 };
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &JsValue);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_str(s: &str);
-    #[wasm_bindgen(js_namespace = console)]
-    fn error(s: &JsValue);
-}
-
 /// Helper to generate a binding
 ///
 /// currently the accuracy of the binding is eyeballed but this makes
@@ -111,12 +101,9 @@ pub fn __pistonite_wbgspawn_worker_send_panic(send: NonNull<ValueSender>) {
 #[doc(hidden)]
 #[wasm_bindgen(skip_typescript)]
 pub fn __unsafe_pistonite_wbgspawn_send_signal(moves_signal: NonNull<SignalSender>) {
-    // log_str("sending signal");
     // safety: callers need to guarantee signal is from an into_js call
     let send = unsafe { from_js(moves_signal) };
-    // log_str("sending signal: cast ok");
     let _ = send.0.send(());
-    log_str("signal sent");
 }
 
 /// Return true if signal is received or sender is dropped; drops the receiver if received

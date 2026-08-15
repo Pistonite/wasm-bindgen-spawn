@@ -1,28 +1,62 @@
 use std::any::Any;
+use std::panic::PanicHookInfo;
+use std::thread;
 
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &JsValue);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_str(s: &str);
-    #[wasm_bindgen(js_namespace = console)]
-    fn error(s: &JsValue);
-}
+/// The harness for sending data to tests
+mod harness;
+
+// #[inline]
+// pub fn set_once() {
+//     use std::sync::Once;
+//     static SET_HOOK: Once = Once::new();
+//     SET_HOOK.call_once(|| {
+//         std::panic::set_hook(Box::new(hook));
+//     });
+// }
+//
+// fn hook(info: &PanicHookInfo) {
+//     harness::error(&info.to_string());
+// }
 
 #[wasm_bindgen]
-pub async fn init_thread_creator(bg_js: JsValue, _wasm_module: JsValue) -> bool {
-    console_error_panic_hook::set_once();
-    let init = wasm_bindgen_spawn::init_bg_no_modules(bg_js);
+pub async fn init_thread_creator(harness: &str, bg_js: JsValue, _wasm_module: JsValue) -> bool {
+    // setup logging harness for testing
+    
+    // first hook up panic messages to the logging harness,
+    // so that our tests can assert a panic happened with the correct message
+    // in a real app you might want to hook it up to console.error or some
+    // other means to see the panic message (for example with
+    // the `console_error_panic_hook crate` crate)
+    // std::panic::set_hook(Box::new(|info| {
+    //     harness::log("panic", &info.to_string());
+    // }));
+        // std::panic::set_hook(Box::new(harness::log_panic));
+    // console_error_panic_hook::set_once();
+    // set_once();
+
+    match harness {
+        "console" => harness::init_console(),
+        "node-fs" => harness::init_node_fs(),
+        other => {
+            harness::error(format!("invalid harness type: {other}"));
+            return false;
+        }
+    }
+
+    let id = thread::current().id();
+    harness::log("init-main-thread-id", &format!("{id:?}"));
+
     #[cfg(feature = "no-wbg-module")]
-    let result = init.ready(_wasm_module).await;
+    let init = wasm_bindgen_spawn::init_bg_no_modules(bg_js, _wasm_module);
     #[cfg(not(feature = "no-wbg-module"))]
-    let result = init.ready().await;
+    let init = wasm_bindgen_spawn::init_bg_no_modules(bg_js, wasm_bindgen::module());
+
+    let result = init.create_dispatcher().await;
 
     if let Err(e) = result {
-        error(&e);
+        harness::error(e);
         return false;
     }
     true
@@ -30,29 +64,36 @@ pub async fn init_thread_creator(bg_js: JsValue, _wasm_module: JsValue) -> bool 
 
 #[wasm_bindgen]
 pub fn example_join_handle() {
+    harness::log("test-start", "example_join_handle");
     let mut handles = vec![];
+    let id = thread::current().id();
     for i in 1..=5 {
-        log_str(&format!("spawning: {i}"));
+        harness::log("info", &format!("spawning thread {i} on main_thread={id:?})"));
         let handle = wasm_bindgen_spawn::spawn(move || {
-            log_str(&format!("Worker {i} thread started"));
+            // set_once();
+        // std::panic::set_hook(Box::new(hook));
+            let id = thread::current().id();
+            harness::log("info", &format!("thread {i} started id={id:?}"));
             if i == 2 {
-                panic!("Hey, I'm 2 (this is a test panic)");
+                panic!("hey, I'm 2 (this is a test panic)");
             }
 
             i * 3
         });
         handles.push(handle);
     }
-
     for handle in handles {
         match handle.join() {
-            Ok(value) => log_str(&format!("Worker thread returned: {value}")),
+            Ok(value) => harness::log("info", &format!("worker thread returned: {value}")),
             Err(e) => {
                 let e = best_effort_panic_info(&e);
-                log_str(&format!("Worker thread failed: {e}"));
+                harness::log("info", &format!("worker thread failed: {e}"));
             }
         }
     }
+
+    harness::log("test-end", "example_join_handle");
+
 }
 #[wasm_bindgen]
 pub fn uninit() {

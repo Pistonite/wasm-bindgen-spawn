@@ -5,27 +5,18 @@ import { initSync, uninit, init_thread_creator, example_join_handle } from "../t
 
 const TARGET = path.resolve(import.meta.dirname, "../target/wasm-pack");
 
-const log_payloads: [number, any][] = [];
-(globalThis as any)._log_harness = {
-    log: (x: any) => {
-        console.log("WASM LOG: " + x?.toString());
-        log_payloads.push([performance.now() - performance.timeOrigin, x])
-    }
-};
-
 const main = async () => {
     const wasm = fs.readFileSync(path.join(TARGET, "unwind-no-modules/example_bg.wasm"));
     const bgJs = fs.readFileSync(path.join(TARGET, "unwind-no-modules/example.js"), {encoding: "utf8"});
     initSync({module: wasm});
-    const success = await init_thread_creator(bgJs, wasm);
+    const success = await init_thread_creator("console", bgJs, wasm);
     if (!success) {
         throw new Error("Failed to init thread creator in WASM!");
     }
     console.log("wasm-bindgen-thread intitialized");
     example_join_handle();
 
-    console.log("payloads:");
-    console.log(log_payloads)
+    await new Promise(r=>setTimeout(r,1000));
 
     uninit();
     

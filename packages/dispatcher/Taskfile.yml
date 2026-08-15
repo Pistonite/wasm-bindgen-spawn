@@ -13,9 +13,11 @@ tasks:
   fix:
     - task: ecma:fix
   build:
-    - node build.ts
-    - task: ecma:lib-build
-    # - mkdir dist/bundle
-    # - bun build --outfile=dist/bundle/worker.js dist/worker.js
-    # - bun build --outfile=dist/bundle/dispatcher.js dist/dispatcher.js
-    # - bun build --outfile=dist/bundle/create.js dist/create.js
+    sources:
+      - '**/*'
+      - ../lib/src/binding.rs
+      - ../../pnpm-*
+      - ../../package.json
+    cmds:
+      - node build.ts
+      - task: ecma:lib-build

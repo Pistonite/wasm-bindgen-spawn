@@ -1,10 +1,15 @@
 version: '3'
 
+includes:
+  dispatcher:
+    taskfile: ../dispatcher
+    dir: ../dispatcher
+    internal: true
 
 
 tasks:
   build:
-    - rm -rf target
+    - task: dispatcher:build
     - mkdir -p target/wasm-pack/logs
     - task: build-cargo
       vars: { BUILD_DIR: unwind }
@@ -44,8 +49,9 @@ tasks:
     cmds:
       - cmd: >
           echo 'building {{.BUILD_DIR}} --target {{.BUILD_TARGET}}';
+          rm -rf ../target/wasm-pack/{{.BUILD_DIR}}-{{.BUILD_TARGET}};
           wasm-pack build -t {{.BUILD_TARGET}}
-          --no-gitignore --no-pack
+          --no-gitignore --no-pack --dev
           --out-dir ../target/wasm-pack/{{.BUILD_DIR}}-{{.BUILD_TARGET}}
           --out-name example
           -- {{.BUILD_ARGS}}

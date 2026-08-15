@@ -5,7 +5,7 @@ import child_process from "node:child_process";
 import type { Plugin, UserConfig } from "mono-dev/vite";
 import { configure } from "mono-dev/lib-build-config";
 
-const BUILD_DEBUG = !!process.env.BUILD_DEBUG;
+const BUILD_DEBUG = false; // include debug outputs
 
 const plugin: Plugin = {
     name: "post-process",
@@ -49,11 +49,12 @@ const wrapExport = (script: string): string => {
     return `const _m=(()=>{let __export;${script};return __export})();`;
 }
 const serializeCode = (code: string): string => {
+    const expr = JSON.stringify(code);
     if (!BUILD_DEBUG) {
-        return JSON.stringify(code);
+        return expr;
     }
-    const lines = code.split("\n");
-    return lines.map((x) => JSON.stringify(x)).join("+\n");
+    const lines = expr.substring(1, expr.length-1).split("\\n");
+    return lines.map((x) => `"${x}"`).join(`+"\\n"+\n`);
 }
 
 export default <UserConfig>configure({

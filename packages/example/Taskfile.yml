@@ -2,9 +2,5 @@ version: '3'
 
 tasks:
   build:
-    - wasm-pack build -t no-modules --out-dir pkg-no-modules
-    - wasm-pack build -t web --out-dir pkg-web
-    - wasm-pack build -t nodejs --out-dir pkg-nodejs
-    - wasm-pack build -t deno --out-dir pkg-deno -- --features no-wbg-module
-    - wasm-pack build -t bundler --out-dir pkg-bundler -- --features no-wbg-module
+    - cargo build --target wasm32-unknown-unknown
     

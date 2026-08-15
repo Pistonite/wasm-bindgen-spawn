@@ -20,4 +20,6 @@ path = "lib.rs"
 wasm-opt = ['--enable-exception-handling']
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ['--enable-exception-handling', '-O']
+[package.metadata.wasm-pack.profile.profiling]
+wasm-opt = ['--enable-exception-handling', '-O']
 

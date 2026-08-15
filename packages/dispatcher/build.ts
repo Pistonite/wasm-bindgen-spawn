@@ -85,7 +85,7 @@ const parse_extern_block_in_binding_file = (binding_file_lines: string[]) => {
         }
     }
     if (i === binding_file_lines.length - 1) {
-        throw new Error("cannot find extern block in binding file");
+        return [];
     }
 
     const export_decls: string[] = [];
@@ -209,7 +209,7 @@ const parse_js_arg_vecs = (file_lines: string[]) => {
     const out: JsArgType[] = [];
     for (; i < file_lines.length; i++) {
         for (; i < file_lines.length; i++) {
-            if (file_lines[i].includes("js_arg_vec!{")) {
+            if (file_lines[i].includes("js_arg_vec!")) {
                 break;
             }
         }
@@ -225,8 +225,8 @@ const parse_js_arg_vecs = (file_lines: string[]) => {
             }
         }
         // console.log("parsing macro: " + macro_invoke);
-        const start_i = macro_invoke.indexOf("js_arg_vec!{");
-        macro_invoke = macro_invoke.substring(start_i + "js_arg_vec!{".length);
+        const start_i = macro_invoke.indexOf("js_arg_vec!");
+        macro_invoke = macro_invoke.substring(start_i + "js_arg_vec!".length).trimStart().substring(1);
         const end_i = macro_invoke.indexOf("};");
         macro_invoke = macro_invoke.substring(0, end_i).trim();
         const last_space_i = macro_invoke.lastIndexOf(" ");
