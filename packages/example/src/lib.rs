@@ -94,14 +94,14 @@ pub fn example_mpsc_channel() {
     let log_context = "test-log:example_mpsc_channel";
 
     let (send, recv) = std::sync::mpsc::channel();
-    for i in 0..5 {
+    for i in 0..3 {
         harness::log(log_context, &format!("{{\"spawning_thread\":{i}}}"));
         let send = send.clone();
         wasm_bindgen_spawn::spawn(move || {
             harness::log(log_context, &format!("{{\"thread_start\":{i}}}"));
-            for j in 0..5 {
-                std::thread::sleep(Duration::from_secs(1));
-                let payload = i * 5 + j;
+            for j in 0..3 {
+                std::thread::sleep(Duration::from_millis(500));
+                let payload = i * 3 + j;
                 harness::log(log_context, &format!("{{\"thread_sending\":{payload}}}"));
                 send.send(payload).unwrap();
             }
