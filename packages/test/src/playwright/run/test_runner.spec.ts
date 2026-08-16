@@ -16,18 +16,22 @@ const QUADS = [
 const RUN_TIMEOUT_MS = 150 * 1000;
 
 for (const quad of QUADS) {
-    test(quad, async ({ page }) => {
+    test(quad, async ({ page }, testInfo) => {
         // the per-test timeout has to outlast the poll, or playwright kills
         // the test before we get to report what the page actually said
         test.setTimeout(RUN_TIMEOUT_MS + 30 * 1000);
-        await runTestForQuad(page, quad);
+        // the project name is the browser (firefox/webkit/chrome/msedge) -
+        // all projects run the same quads in parallel, so without it the
+        // interleaved output is impossible to attribute
+        await runTestForQuad(page, quad, testInfo.project.name);
     });
 }
 
-const runTestForQuad = async (page: Page, quad: string) => {
+const runTestForQuad = async (page: Page, quad: string, browser: string) => {
     // surface anything the page logs, so a failure here is debuggable
-    page.on("console", (msg) => console.log(`[${quad}] ${msg.type()}: ${msg.text()}`));
-    page.on("pageerror", (e) => console.log(`[${quad}] pageerror: ${e.message}`));
+    const prefix = `[${browser}/${quad}]`;
+    page.on("console", (msg) => console.log(`${prefix} ${msg.text()}`));
+    page.on("pageerror", (e) => console.log(`${prefix} pageerror: ${e.message}`));
 
     await page.goto(`http://localhost:3001/html/${quad}/index.html`);
 

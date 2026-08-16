@@ -91,6 +91,18 @@ tasks:
     cmds:
       - node src/playwright/index.ts
 
+  build-image:
+    desc: Rebuild the playwright container image
+    cmds:
+      - node src/playwright/index.ts --build-image
+  dev-http:
+    cmds:
+      - node src/playwright/index.ts --http-only --https
+
+  log:
+    cmds:
+      - node src/tests/index.ts {{.CLI_ARGS}}
+
   clean:
     - rm -rf target build-unwind/target build-abort/target
     - docker container prune -a -f

@@ -20,14 +20,21 @@ export default defineConfig({
   retries: 0,
   workers: undefined,
   reporter: 'list',
+  /* the real test output is the harness logs under target/test, so there's
+   * nothing here worth keeping around */
+  outputDir: './target/playwright',
+  preserveOutput: 'never',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     // Base URL to use in actions like `await page.goto('')`
         // this is the http server that serves the front end test bundles (see playwright/http_server.ts)
     baseURL: 'http://localhost:3001',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* nothing to attach - a failure here means the page never reached "done",
+     * and why it didn't is in the harness log, not in a trace */
+    trace: 'off',
+    screenshot: 'off',
+    video: 'off',
   },
 
   /* Configure projects for major browsers */

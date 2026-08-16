@@ -8,4 +8,4 @@ if (payload instanceof Error) {
         payload = `${payload}`;
     }
 }
-return JSON.stringify({timestamp: performance.now(),thread,type, payload});
+return JSON.stringify({timestamp: performance.now()+performance.timeOrigin,thread,type, payload});

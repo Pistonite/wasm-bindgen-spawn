@@ -1,12 +1,15 @@
 
+import { X509Certificate } from "node:crypto";
 import http from "node:http";
+import https from "node:https";
 import fs from "node:fs";
 import path from "node:path";
 
-import { BROWSER_ENGINES, getEngineNameFromUserAgent, TARGET_BUNDLE, TARGET_FRAMEWORK, TARGET_TEST } from "#framework";
+import { BROWSER_ENGINES, getEngineNameFromUserAgent, PACKAGE_DIR, TARGET_BUNDLE, TARGET_FRAMEWORK, TARGET_TEST } from "#framework";
 
 // port for the HTTP server that the browser automation navigates to
 const HTTP_PORT = 3001;
+
 
 const COMMON_HEADERS = {
     // required headers for shared memory and atomics
@@ -17,8 +20,9 @@ const COMMON_HEADERS = {
     "Cache-Control": "no-store",
 } as const;
 
-let instance: http.Server | undefined;
+let instance: http.Server | https.Server | undefined;
 let closed = false;
+
 
 export const stopHttpServer = async () => {
     if (closed) {
@@ -37,7 +41,7 @@ export const stopHttpServer = async () => {
     }
 }
 
-export const startHttpServer = async (): Promise<void> => {
+export const startHttpServer = async (useHttps: boolean): Promise<void> => {
     // clean the browser test outputs
     for (const engine of BROWSER_ENGINES) {
         const dir = path.join(TARGET_TEST, engine);
@@ -48,25 +52,86 @@ export const startHttpServer = async (): Promise<void> => {
     // using a queue to prevent partial writes to logs
     const logQueue = new Map<string, Promise<void>>();
 
-    const server = http.createServer((req, res) => {
-        void handleRequest(logQueue, req, res).catch((e) => {
-            console.error("error handling request:", e);
+    const handler = (req: http.IncomingMessage, res: http.ServerResponse) => {
+        void handleRequest(logQueue, req, res).catch(() => {
+            // silently ignore errors since it messes up the playwright output
+            // console.error("error handling request:", e);
             if (!res.headersSent) {
                 res.writeHead(500);
             }
             res.end();
         });
-    });
+    };
+
+    let server: http.Server | https.Server;
+    let host: string;
+    if (useHttps) {
+        try {
+            const cert = loadCert();
+            server = https.createServer({ key: cert.key, cert: cert.cert }, handler);
+            // must match what the cert was issued for, or the browser rejects it.
+            // whatever this resolves to has to point back at this machine
+            host = cert.host;
+        } catch {
+            console.error("failed to load certificate, falling back to http")
+            server = http.createServer(handler);
+            host = "localhost";
+        }
+    } else {
+        server = http.createServer(handler);
+        host = "localhost";
+    }
 
     await new Promise<void>((resolve, reject) => {
         server.on("error", reject);
-        // we must serve on localhost and let the docker container share the host network
-        // so the browser can treat the page as secure
-        server.listen(HTTP_PORT, "127.0.0.1", resolve);
+        // serve on local network for debugbility
+        server.listen(HTTP_PORT, "0.0.0.0", resolve);
     });
 
-    instance  = server;
-    console.log(`http server listening on http://localhost:${HTTP_PORT}`);
+    instance = server;
+    const origin = `${useHttps ? "https" : "http"}://${host}:${HTTP_PORT}`;
+    console.log(`http server listening on ${origin}`);
+};
+
+interface Cert {
+    key: Buffer;
+    cert: Buffer;
+    host: string;
+}
+
+const loadCert = (): Cert => {
+    const CERT_DIR = path.resolve(PACKAGE_DIR, "..", "..", ".cert");
+    const certPath = path.join(CERT_DIR, "cert.pem");
+    const keyPath = path.join(CERT_DIR, "cert.key");
+    for (const p of [certPath, keyPath]) {
+        if (!fs.existsSync(p)) {
+            throw new Error(`missing ${p}, cannot serve over https`);
+        }
+    }
+    const cert = fs.readFileSync(certPath);
+    const key = fs.readFileSync(keyPath);
+
+    // take the host the cert was issued for, so the url we hand to the
+    // browsers always matches the cert
+    const x509 = new X509Certificate(cert);
+    // subjectAltName looks like `DNS:foo.local, DNS:bar.local`
+    const host =
+        x509.subjectAltName
+            ?.split(",")
+            .map((x) => x.trim())
+            .find((x) => x.startsWith("DNS:"))
+            ?.substring("DNS:".length) ??
+        // fall back to the common name for certs without a SAN
+        x509.subject
+            .split("\n")
+            .map((x) => x.trim())
+            .find((x) => x.startsWith("CN="))
+            ?.substring("CN=".length);
+    if (!host) {
+        throw new Error(`could not read a host name from ${certPath}`);
+    }
+
+    return { key, cert, host };
 };
 
 const QUAD_PATTERN = /^[a-z0-9-]+$/;

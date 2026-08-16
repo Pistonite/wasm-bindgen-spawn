@@ -13,7 +13,7 @@ export class LogFile {
     public engine: string;
     /** the panic runtime used in the test */
     public panicRuntime: "abort" | "unwind";
-    private testLogMap: Record<string, TestLog> = {};
+    public testLogMap: Record<string, TestLog> = {};
     constructor(engine: string, logName: string) {
         this.engine = engine;
         const logPath = path.join(TARGET_TEST, engine, logName);
@@ -63,16 +63,19 @@ export class LogFile {
             if (endIndex === -1) {
                 throw new Error("incomplete log file: test " + name + " does not have an end");
             }
-            let endTimestamp = startTimestamp;
+            let endTimestamp = -1;
             const processedEntries: LogEntry[] = [];
             for (let i = startIndex; i <= endIndex; i++) {
-                if (entries[i].type === "test-end" && entries[i].payload === "name") {
+                if (entries[i].type === "test-end" && entries[i].payload === name) {
                     endTimestamp = entries[i].timestamp;
                     break;
                 }
                 if (entries[i].type === "test-log:" + name || entries[i].type === "panic") {
                     processedEntries.push(new LogEntry(entries[i], startTimestamp, mainThreadId));
                 }
+            }
+            if (endTimestamp === -1) {
+                throw new Error("failed to find end timestamp for test "+name);
             }
             const duration = endTimestamp-startTimestamp;
             this.testLogMap[name] = {
@@ -134,7 +137,28 @@ export class LogEntry {
     public isMainThread() {
         return this.thread === this.mainThreadId;
     }
+
+    public toString() {
+        return logEntryToString(this);
+    }
 }
+
+/**
+ * Format a log entry as a single line for human consumption.
+ *
+ * The timestamp is relative to the start of the test, and the thread column
+ * is what most of these logs are actually about, so both are fixed-width to
+ * keep them scannable down the page.
+ */
+export const logEntryToString = (entry: LogEntry): string => {
+    const timestamp = `${entry.timestamp.toFixed(2)}ms`.padStart(11);
+    const thread = (entry.isMainThread() ? "main" : `t${entry.thread}`).padStart(5);
+    const { panic } = entry;
+    const payload = panic
+        ? `panic at ${panic.file}:${panic.line}:${panic.col} - ${panic.message}`
+        : JSON.stringify(entry.payload);
+    return `${timestamp} ${thread} | ${payload}`;
+};
 
 export interface PanicInfo {
     file: string,

@@ -7,17 +7,22 @@ const main = async () => {
         setOutput("error: invalid url!");
         return;
     }
-    const [profile, panicRuntime, host, target] = pathname.substring(pathname.lastIndexOf("/")).trim().split("-", 4);
-    const quad = `${profile}-${panicRuntime}-${host}-${target}`;
+    const pathnamePart = 
+            pathname.substring(pathname.lastIndexOf("/")+1).trim();
+    const [profile, panicRuntime, host] = pathnamePart.split("-", 3);
+    const prefix = `${profile}-${panicRuntime}-${host}`;
+    const target  = pathnamePart.substring(prefix.length+1);
+    const quad = `${prefix}-${target}`;
+    console.log(`starting web worker for quad: ${quad}`);
     switch (target) {
         case "no-modules": {
-            const scriptPath = `/bundle/${quad}/example.js`;
+            const scriptPath = location.origin+`/bundle/${quad}/example.js`;
             const script = await (await fetch(scriptPath)).text();
-            const wasmPath = `/bundle/${quad}/example_bg.wasm`;
+            const wasmPath = location.origin+`/bundle/${quad}/example_bg.wasm`;
             const wasmBytes = await (await fetch(wasmPath)).arrayBuffer();
-            const workerPath = `/bundle/${quad}/worker.js`;
+            const workerPath = location.origin+`/bundle/${quad}/worker.js`;
             const workerScript = await (await fetch(workerPath)).text();
-            const bindgenScript = script+"\n;globalThis.__harness_fetch_endpoint="+JSON.stringify("/harness/"+quad)+";\n";
+            const bindgenScript = script+"\n;globalThis.__harness_fetch_endpoint="+JSON.stringify(location.origin+"/harness/"+quad)+";\n";
             const combinedScript = bindgenScript+workerScript;
             const url = URL.createObjectURL(new Blob([combinedScript], { type: "text/javascript" }));
 
@@ -35,10 +40,14 @@ const main = async () => {
             };
             break;
         }
+
+        default:
+        setOutput("error: invalid quad: " + quad);
     }
 };
 
 const setOutput = (output: string) => {
+    console.log(output);
     const out = document.getElementById("-out-");
     if (out) {
         out.innerText=output;

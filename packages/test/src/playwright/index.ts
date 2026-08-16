@@ -3,11 +3,17 @@ import child_process from "node:child_process";
 import { PACKAGE_DIR } from "#framework";
 
 import { startHttpServer, stopHttpServer } from "./http_server.ts";
-import { PW_PORT, startPlaywrightContainer, stopPlaywrightContainer } from "./pw_container.ts";
+import { PW_PORT, rebuildPlaywrightImage, startPlaywrightContainer, stopPlaywrightContainer } from "./pw_container.ts";
 import { getPlaywrightCli } from "./util.ts";
 
 const main = async () => {
     try {
+        // nothing to start up or tear down for this one
+        if (process.argv.includes("--build-image")) {
+            rebuildPlaywrightImage();
+            return;
+        }
+
         // register clean up on ctrl-c
         for (const signal of ["SIGINT", "SIGTERM"] as const) {
             process.on(signal, async () => {
@@ -17,21 +23,35 @@ const main = async () => {
             });
         }
 
-        await startHttpServer();
-        await startPlaywrightContainer();
+        const httpOnly = process.argv.includes("--http-only");
+        const useHttps = process.argv.includes("--https");
+        if (useHttps && !httpOnly) {
+            throw new Error("--https may only be used with --http-only");
+        }
+
+        await startHttpServer(useHttps);
+        if (!httpOnly) {
+            await startPlaywrightContainer();
+        }
         // ensure things are stabilized
         await new Promise(r => setTimeout(r, 1000));
 
-        let code: number;
-        try {
-            code = await runPlaywright();
-        } finally {
-            // wait for a bit to ensure log files are completely flushed
-            await new Promise(r => setTimeout(r, 5000));
-            await cleanup();
+        if (!httpOnly) {
+            let code: number;
+            try {
+                code = await runPlaywright();
+            } finally {
+                console.log("waiting for log flushing to complete");
+                // wait for a bit to ensure log files are completely flushed
+                await new Promise(r => setTimeout(r, 5000));
+                await cleanup();
+            }
+
+            process.exit(code);
+        } else {
+            console.log("--http-only: only running http server, kill with ctrl-c");
         }
 
-        process.exit(code);
     } catch(e) {
         console.error(e);
         await cleanup();
@@ -42,7 +62,7 @@ const main = async () => {
 
 const runPlaywright = async (): Promise<number> => {
     const cli = getPlaywrightCli();
-    console.log("running playwright test");
+    console.log("launching playwright");
     return await new Promise<number>((resolve) => {
         const child = child_process.spawn(
             // same node that's running the orchestrator, so the test run can't

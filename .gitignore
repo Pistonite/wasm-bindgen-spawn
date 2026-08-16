@@ -6,3 +6,4 @@ node_modules
 /mono-dev
 rust-toolchain
 .task
+.cert
