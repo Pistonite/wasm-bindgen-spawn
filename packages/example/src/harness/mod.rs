@@ -1,15 +1,22 @@
 use std::cell::RefCell;
-use std::panic::PanicHookInfo;
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
 pub fn init_console() {
+    // this is mainly for debugging to just print the payload in the JS console
+    // however note that console.log is tied to the JS Event Loop and some runtime
+    // may not process it when *any* thread is blocked on atomics (looking at you node)
     init_harness_script("console.log(ARG)")
 }
 pub fn init_node_fs() {
-    init_harness_script("fs.appendFileSync(globalThis.__harness_output_path,ARG+'\\n','utf8')")
+    // feed the payload through node:fs exposed as globalThis.__fs
+    init_harness_script("globalThis.__fs.appendFileSync(globalThis.__harness_output_path,ARG+'\\n','utf8')")
+}
+pub fn init_fetch() {
+    // feed the payload through a POST request to a webserver
+    init_harness_script("globalThis.fetch(globalThis.__harness_fetch_endpoint,{method:'POST',body:ARG})")
 }
 
 pub fn log(tag: &str, s: &str) {
@@ -24,34 +31,20 @@ pub fn error(s: impl Into<JsValue>) {
         console_error(&s);
     }
 }
-// pub fn log_panic(info: &PanicHookInfo) {
-//     let info = info.to_string();
-//     // need to create a new harness on the spot
-//     // because thread locals are not accessible at this point
-//     match HARNESS_SCRIPT.get() {
-//         Some(script) => {
-//             let harness = Harness::new(script);
-//             harness.log("panic", &info)
-//         }
-//         None => {
-//             console_error_str("harness not initialized");
-//         }
-//     }
-// }
 static HARNESS_SCRIPT: OnceLock<String> = OnceLock::new();
 fn init_harness_script(script: &str) {
     let script = script.to_string();
     let _ = HARNESS_SCRIPT.set(script.clone());
 
+    // first hook up panic messages to the logging harness,
+    // so that our tests can assert a panic happened with the correct message
+    // in a real app you might want to hook it up to console.error or some
+    // other means to see the panic message (for example with
+    // the `console_error_panic_hook crate` crate)
     std::panic::set_hook(Box::new(move |info| {
         let harness = Harness::new(&script);
         let info = info.to_string();
-        let tag = JsValue::from("panic");
-        // let info = JsValue::from(&info);
-            console_error(&tag);
-            console_error_str(&info);
-        // harness.log("panic", &info);
-        //     console_error_str(&info);
+        harness.log("panic", &info);
     }));
 }
 thread_local! {
@@ -103,13 +96,10 @@ impl Harness {
         self.emit(x.clone(), "error".into());
     }
     fn emit(&self, s: JsValue, tag: JsValue) {
-                    // console_error_str("harness: emitting");
-                    // console_error(&tag);
-                    // console_error(&s);
-                    // console_error_str("--");
+        let thread_id = u64::from(std::thread::current().id().as_u64()) as u32;
         let args = 
             JsValue::from(vec![
-            s, tag
+            s, tag, thread_id.into(),
         ]
             );
         

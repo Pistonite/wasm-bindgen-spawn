@@ -1,4 +1,4 @@
-const [payload, type] = ARG;
+const [payload, type, thread] = ARG;
 if (payload instanceof Error) {
     if ("message" in payload) {
         payload = payload.message;
@@ -8,4 +8,4 @@ if (payload instanceof Error) {
         payload = `${payload}`;
     }
 }
-return JSON.stringify({timestamp: performance.now(),type, payload});
+return JSON.stringify({timestamp: performance.now(),thread,type, payload});

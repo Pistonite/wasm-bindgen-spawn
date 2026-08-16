@@ -1,6 +1,7 @@
 {
     "devDependencies": {
         "eslint": "^10",
-        "mono-dev": "catalog:"
+        "mono-dev": "catalog:",
+        "@playwright/test": "catalog:"
     }
 }

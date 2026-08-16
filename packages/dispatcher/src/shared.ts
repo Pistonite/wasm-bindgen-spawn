@@ -18,18 +18,33 @@ export interface WorkerGlobalScopeAdapter {
 
 export const createWorker = async (url: string, useESWorker: boolean): Promise<WorkerAdapter> => {
     if (typeof Worker === "function") {
-        const worker = useESWorker ? 
-            new Worker(url, { type: "module" })
-            :
-            new Worker(url);
-        return {
-            listen: (cb) => worker.onmessage = ({data}) => cb(data),
-            postMessage: worker.postMessage.bind(worker),
-            terminate: worker.terminate.bind(worker),
+        // Deno does not support classic workers, only ES workers,
+        // Deno's node:worker_threads also does not allow either require or import (what the f)
+        // which doesn't let us set up the fs hook needed for test harness
+        // @ts-expect-error Deno global
+        if (typeof Deno !== "undefined") {
+            useESWorker = true;
+        }
+        if (import.meta.env.BUILD_DEBUG) {
+            await __debugImpl("using web worker");
+        }
+        try {
+            const worker = useESWorker ? 
+                new Worker(url, { type: "module" })
+                :
+                new Worker(url);
+            return {
+                listen: (cb) => worker.onmessage = ({data}) => cb(data),
+                postMessage: worker.postMessage.bind(worker),
+                terminate: worker.terminate.bind(worker),
+            }
+        } catch(e){
+        console.error(e);
+        throw new Error("Worker is not supported in this environment", {cause: e});
         }
     }
     try {
-        const worker_threads = await new Function(`return import("worker_threads")`)();
+        const worker_threads = await new Function(`return import("node:worker_threads")`)();
         const script = await (await fetch(url)).text();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const worker = new worker_threads.Worker(script, {eval: true}) as any;
@@ -38,25 +53,35 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
                 await __debugImpl("worker exit");
             });
         }
+        if (import.meta.env.BUILD_DEBUG) {
+            await __debugImpl("using node:worker_threads");
+        }
         return {
             listen: (cb) => worker.on('message', cb),
             postMessage: worker.postMessage.bind(worker),
             terminate: worker.terminate.bind(worker),
         }
     } catch(e) {
+        console.error(e);
         throw new Error("Worker is not supported in this environment", {cause: e});
     }
 }
 
 export const getWorkerGlobalScope = async () : Promise<WorkerGlobalScopeAdapter> => {
     if (typeof self !== 'undefined') {
+        if (import.meta.env.BUILD_DEBUG) {
+            await __debugImpl("using WorkerGlobalScope");
+        }
         return {
             listen: (cb) => self.onmessage = ({data})=>cb(data),
             postMessage: self.postMessage.bind(self)
         };
     }
     try {
-        const worker_threads = await new Function(`return import("worker_threads")`)();
+        if (import.meta.env.BUILD_DEBUG) {
+            await __debugImpl("using node:worker_threads parentPort");
+        }
+        const worker_threads = await new Function(`return import("node:worker_threads")`)();
         const parentPort = worker_threads.parentPort;
         return {
             listen: (cb) => {

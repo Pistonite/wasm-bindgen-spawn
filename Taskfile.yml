@@ -12,14 +12,20 @@ includes:
     optional: true
 
 tasks:
-  install-cargo-extra-tools:
-    aliases: [icets]
-    cmds:
-      - cargo install txtpp
+  setup:
+    - pnpm install
+    - pnpm exec playwright install chromium
+    # - pnpm exec playwright install msedge
+    - pnpm exec playwright install firefox
+    - pnpm exec playwright install webkit
+
+  setup-arch-linux:
+    - sudo pacman -S gtk3 gtk4 libxrandr libxdamage libxcomposite alsa-lib libxslt gst-libav libavif harfbuzz-icu libmanette enchant hyphen libxml2-legacy --needed
+    - yay -S icu74 playwright-webkit-flite-deps --needed
 
   install:
     cmds:
-      - echo "nightly" > example/rust-toolchain
+      - pnpm exec playwright install
       - echo "nightly" > rust-toolchain
 
   build:

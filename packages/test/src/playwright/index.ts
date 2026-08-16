@@ -1,0 +1,72 @@
+import child_process from "node:child_process";
+
+import { PACKAGE_DIR } from "#framework";
+
+import { startHttpServer, stopHttpServer } from "./http_server.ts";
+import { PW_PORT, startPlaywrightContainer, stopPlaywrightContainer } from "./pw_container.ts";
+import { getPlaywrightCli } from "./util.ts";
+
+const main = async () => {
+    try {
+        // register clean up on ctrl-c
+        for (const signal of ["SIGINT", "SIGTERM"] as const) {
+            process.on(signal, async () => {
+                console.log("interrupted! terminating the orchestrator");
+                await cleanup();
+                process.exit(130);
+            });
+        }
+
+        await startHttpServer();
+        await startPlaywrightContainer();
+        // ensure things are stabilized
+        await new Promise(r => setTimeout(r, 1000));
+
+        let code: number;
+        try {
+            code = await runPlaywright();
+        } finally {
+            // wait for a bit to ensure log files are completely flushed
+            await new Promise(r => setTimeout(r, 5000));
+            await cleanup();
+        }
+
+        process.exit(code);
+    } catch(e) {
+        console.error(e);
+        await cleanup();
+        console.error("fatal error occured, unable to run test");
+        process.exit(1);
+    }
+};
+
+const runPlaywright = async (): Promise<number> => {
+    const cli = getPlaywrightCli();
+    console.log("running playwright test");
+    return await new Promise<number>((resolve) => {
+        const child = child_process.spawn(
+            // same node that's running the orchestrator, so the test run can't
+            // end up on a different version than the one we're launched with
+            process.execPath,
+            [cli, "test"],
+            {
+                stdio: "inherit",
+                cwd: PACKAGE_DIR,
+                env: {
+                    PW_TEST_CONNECT_WS_ENDPOINT: `ws://localhost:${PW_PORT}`,
+                },
+            },
+        );
+        child.on("error", (e) => {
+            console.error("failed to run playwright:", e);
+            resolve(1);
+        });
+        child.on("close", (code) => resolve(code ?? 1));
+    });
+};
+
+const cleanup = async () => {
+    await Promise.all([stopHttpServer(), stopPlaywrightContainer()]);
+}
+
+void main();

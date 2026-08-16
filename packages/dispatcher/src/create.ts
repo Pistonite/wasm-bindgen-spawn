@@ -51,6 +51,7 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
     const dispatcherUrl = createJsBlobUrl(dispatcherSource);
     await __debug("creating dispatcher worker");
     const dispatcher = await createWorker(dispatcherUrl, useESWorker);
+    await __debug("dispatcher worker created");
     await new Promise<void>((resolve) => {
         dispatcher.listen(async (data) => {
             if (data) {
@@ -75,5 +76,4 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
             dispatcher.terminate();
         });
     });
-    await __debug("dispatcher worker created");
 })();

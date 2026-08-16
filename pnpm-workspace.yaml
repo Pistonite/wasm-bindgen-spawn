@@ -13,3 +13,4 @@ packages:
 catalog:
   mono-dev: github:pistonight/mono-dev#dist
   '@types/node': ^24
+  "@playwright/test": "^1.62.1"
