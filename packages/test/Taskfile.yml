@@ -31,16 +31,25 @@ tasks:
 
   test:
     - task: build
-    - task: run-native
-    - task: run-browser
+    - task: run-native-all
+    - task: run-browser-all
     - task: run-assertion
 
   run-native:
     desc: Run native targets using node/bun/deno
     cmds:
+      - node src/native/index.ts {{.CLI_ARGS}}
+  run-native-all:
+    internal: true
+    cmds:
       - node src/native/index.ts
+
   run-browser:
     desc: Run browser targets using playwright
+    cmds:
+      - node src/playwright/index.ts {{.CLI_ARGS}}
+  run-browser-all:
+    internal: true
     cmds:
       - node src/playwright/index.ts
 
@@ -53,6 +62,7 @@ tasks:
       - node src/playwright/index.ts --http-only --https
 
   run-assertion:
+    aliases: [assert]
     desc: Run assertions on the logs produced by the tests
     cmds:
       - task: ecma:test

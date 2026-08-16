@@ -45,7 +45,9 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
             break;
         }
         default: {
-            throw new Error("(Unexpected) Invalid bg_target passed to wasm-bindgen-spawn thread creator");
+            throw new Error(
+                "(Unexpected) Invalid bg_target passed to wasm-bindgen-spawn thread creator",
+            );
         }
     }
     const dispatcherUrl = createJsBlobUrl(dispatcherSource);

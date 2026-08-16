@@ -1,6 +1,6 @@
 import child_process from "node:child_process";
 
-import { getPackageRoot } from "#framework";
+import { BROWSER_ENGINES, getPackageRoot } from "#framework";
 
 import { startHttpServer, stopHttpServer } from "./http_server.ts";
 import {
@@ -67,16 +67,34 @@ const main = async () => {
 const runPlaywright = async (): Promise<number> => {
     const cli = getPlaywrightCli();
     console.log("launching playwright");
+    const engineFlags: string[] = [];
+    const quadsFilter: string[] = [];
+    const testFilters: string[] = [];
+    outer: for (const arg of process.argv.slice(2)) {
+        for (const e of BROWSER_ENGINES) {
+            if (arg === "--" + e) {
+                engineFlags.push("--project=" + e);
+                continue outer;
+            }
+        }
+        if (arg.startsWith("-E")) {
+            testFilters.push(arg.substring(2));
+            continue;
+        }
+        quadsFilter.push(arg);
+    }
     return await new Promise<number>((resolve) => {
         const child = child_process.spawn(
             // same node that's running the orchestrator, so the test run can't
             // end up on a different version than the one we're launched with
             process.execPath,
-            [cli, "test"],
+            [cli, "test", ...engineFlags],
             {
                 stdio: "inherit",
                 cwd: getPackageRoot(),
                 env: {
+                    PW_WBS_QUAD_FILTERS: quadsFilter.join(","),
+                    PW_WBS_TEST_FILTERS: testFilters.join(","),
                     PW_TEST_CONNECT_WS_ENDPOINT: `ws://localhost:${PW_PORT}`,
                 },
             },

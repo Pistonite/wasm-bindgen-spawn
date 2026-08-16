@@ -90,8 +90,13 @@ pub use spawn::{
 };
 mod join;
 pub use join::JoinHandle;
+/// The worker thread's runtime which contains wrappers for handling panics
+mod runtime;
+pub use runtime::spawn_local;
 
 /// Interop with JS
 mod binding;
+#[allow(unused)]
+mod binding_constants;
 
 mod util;

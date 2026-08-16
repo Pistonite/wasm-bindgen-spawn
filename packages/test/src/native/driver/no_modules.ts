@@ -8,8 +8,9 @@ import { setupGlobalHarnessOutputPath } from "./util.ts";
 const main = async () => {
     const quad = process.argv[2];
     if (!quad) {
-        throw new Error("invalid quad, usage: node <driver_script>.ts <quad>");
+        throw new Error("invalid quad, usage: node <driver_script>.ts <quad> <test_filters>...");
     }
+    const filters = process.argv.slice(3);
     const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", quad + "/example.js");
     const [wasm_bindgen, wasmModule] = await importNodeNoModulesWasmBundle(quad);
     wasm_bindgen.initSync({ module: wasmModule });
@@ -22,12 +23,17 @@ const main = async () => {
     if (!success) {
         throw new Error("Failed to init thread creator in WASM!");
     }
-    measure("example_join_handle", () => {
-        wasm_bindgen.example_join_handle();
-    });
-    measure("example_mpsc_channel", () => {
-        wasm_bindgen.example_mpsc_channel();
-    });
+    const examples = Object.keys(wasm_bindgen).filter((x) => x.startsWith("example_"));
+    for (const testCase of examples) {
+        const shouldRun = !filters.length || filters.some((x) => testCase.includes(x));
+        if (!shouldRun) {
+            continue;
+        }
+        measure(testCase, () => {
+            const fn = wasm_bindgen[testCase as keyof typeof wasm_bindgen] as () => void;
+            fn();
+        });
+    }
 
     wasm_bindgen.uninit();
 };

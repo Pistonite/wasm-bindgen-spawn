@@ -1,11 +1,9 @@
 use std::ptr::NonNull;
 
-use futures_util::FutureExt;
+use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use crate::util::{
-    self, DispatchReceiver, SignalReceiver, SignalSender, ThreadProc, ValueSender, WorkerPanic,
-};
+use crate::util::{self, DispatchReceiver, SignalReceiver, SignalSender, ThreadProc, ValueSender};
 
 /// Helper to generate a binding
 ///
@@ -46,51 +44,22 @@ pub(crate) use js_type;
 #[wasm_bindgen(skip_typescript)]
 pub fn __pistonite_wbgspawn_worker_main(
     moves_f: NonNull<ThreadProc>,
-    maybe_moves_send: NonNull<ValueSender>,
+    moves_send: NonNull<ValueSender>,
     moves_start: NonNull<SignalSender>,
+    terminate_fn: Function,
 ) -> js_type!(Promise<void>) {
     // signal the dispatcher that the worker is now started, and is safe to block
     // safety: the sender is only created in _dispatch_recv, where into_js is called
     __unsafe_pistonite_wbgspawn_send_signal(moves_start);
 
-    // safety: the closure is created in _dispatch_recv where into_js is called
-    let f: Box<ThreadProc> = unsafe { from_js(moves_f) };
-    js_sys::futures::future_to_promise(async move {
-        let result = if cfg!(panic = "unwind") {
-            // the UnwindSafe trait does not have additional guarantees,
-            // it is only a warning to mark potentially-inconsistent
-            // state is not easily observed by caller. The Send trait
-            // requirement from spawn already ensures that any owned value
-            // is moved to the closure and not observable by the spawner,
-            // and shared value is guarded by types like Mutex that has
-            // other mechanism (i.e. poisoning) to observe panics.
-            // Therefore we have a similar case to std::thread::spawn
-            // and is ok to use AssertUnwindSafe here
-            let result = f.catch_unwind().await;
-            // std::panic::catch_unwind(f)
-            result.map_err(|e| WorkerPanic { payload: Some(e) })
-        } else {
-            Ok(f.await)
-        };
-        // safety: the value sender/receiver channel is only created
-        // in _dispatch_recv, where into_js is called
-        let send = unsafe { from_js(maybe_moves_send) };
-        // there's not much we can do if the join handle was dropped
-        let _ = send.0.send(result);
-
-        Ok(JsValue::undefined())
-    })
-    .into()
-}
-
-/// Notify the join handle that the worker has unrecoverably (hard) panicked
-#[doc(hidden)]
-#[wasm_bindgen(skip_typescript)]
-pub fn __pistonite_wbgspawn_worker_send_panic(send: NonNull<ValueSender>) {
     // safety: the value sender/receiver channel is only created
     // in _dispatch_recv, where into_js is called
-    let send = unsafe { from_js(send) };
-    let _ = send.0.send(Err(WorkerPanic { payload: None }));
+    let send = unsafe { from_js(moves_send) };
+
+    // safety: the closure is created in spawn where into_js is called
+    let f: Box<ThreadProc> = unsafe { from_js(moves_f) };
+
+    crate::runtime::thread_main(f, terminate_fn, *send)
 }
 
 /// Send a signal
@@ -106,8 +75,12 @@ pub fn __unsafe_pistonite_wbgspawn_send_signal(moves_signal: NonNull<SignalSende
     let _ = send.0.send(());
 }
 
-/// Return true if signal is received or sender is dropped; drops the receiver if received
-/// or sender is dropped
+/// Poll the signal without blocking.
+///
+/// # Return
+/// - `true` if received and *signal will be dropped*
+/// - `false` if not received
+/// - `undefined` if disconnected
 ///
 /// # Safety
 /// Caller must ensure `maybe_moves_signal` is obtained from `into_js` somewhere.
@@ -117,16 +90,17 @@ pub fn __unsafe_pistonite_wbgspawn_send_signal(moves_signal: NonNull<SignalSende
 #[wasm_bindgen(skip_typescript)]
 pub fn __unsafe_pistonite_wbgspawn_poll_signal(
     maybe_moves_signal: NonNull<SignalReceiver>,
-) -> bool {
+) -> Option<bool> {
     // safety: callers need to guarantee signal is from an into_js call
     let result = unsafe { maybe_moves_signal.as_ref() }.try_recv();
     match result {
-        Err(oneshot::TryRecvError::Empty) => false,
+        Err(oneshot::TryRecvError::Empty) => Some(false),
+        Err(oneshot::TryRecvError::Disconnected) => None,
         _ => {
             // safety: callers need to guarantee signal is from an into_js call
             let recv = unsafe { from_js(maybe_moves_signal) };
             drop(recv);
-            true
+            Some(true)
         }
     }
 }
@@ -146,7 +120,6 @@ pub fn __pistonite_wbgspawn_dispatch_recv(
         Err(_) => return None,
     };
 
-    // note that f_ptr is double-boxed because a Box<dyn> is a fat pointer
     let (start_send, start_recv) = util::assert_unwind_safe_oneshot_channel::<()>();
 
     let request = js_arg_vec! {
@@ -187,9 +160,3 @@ pub unsafe fn from_js<T>(nonnull_ptr: NonNull<T>) -> Box<T> {
     // safety: since nonnull_ptr is returned from into_js it's called with into_raw
     unsafe { Box::from_raw(ptr) }
 }
-
-/// Constant value for the "no-modules" target in wasm_bindgen
-pub const WBG_TARGET_NO_MODULES: u32 = 1;
-
-/// Constant value for the "web" target in wasm_bindgen
-pub const WBG_TARGET_WEB: u32 = 2;

@@ -7,6 +7,7 @@ use js_sys::{Function, Promise};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 
 use crate::binding::{self, js_arg_vec, js_type};
+use crate::binding_constants::{WBG_TARGET_NO_MODULES, WBG_TARGET_WEB};
 use crate::join::JoinHandle;
 use crate::util::{
     self, DispatchPayload, DispatchReceiver, DispatchSender, SignalSender, ThreadProc,
@@ -16,7 +17,7 @@ use crate::util::{
 /// See [`ThreadDispatcherInit`]
 pub fn init_bg_no_modules(bg_js: JsValue, wasm_module: JsValue) -> ThreadDispatcherInit {
     ThreadDispatcherInit {
-        bg_target: binding::WBG_TARGET_NO_MODULES,
+        bg_target: WBG_TARGET_NO_MODULES,
         bg_js,
         wasm_module,
     }
@@ -25,7 +26,7 @@ pub fn init_bg_no_modules(bg_js: JsValue, wasm_module: JsValue) -> ThreadDispatc
 /// See [`ThreadDispatcherInit`]
 pub fn init_bg_web(bg_js: JsValue, wasm_module: JsValue) -> ThreadDispatcherInit {
     ThreadDispatcherInit {
-        bg_target: binding::WBG_TARGET_WEB,
+        bg_target: WBG_TARGET_WEB,
         bg_js,
         wasm_module,
     }
@@ -158,10 +159,12 @@ impl ThreadDispatcherInit {
         // than once in one shared memory instance. Since the memory is shared, all
         // threads can access the dispatcher at the same time (since itself is just a
         // std::sync::mpsc Sender
-        let mut dispatcher_guard = DISPATCHER.lock().expect("cannot lock the dispatcher");
-        if dispatcher_guard.is_some() {
-            drop(dispatcher_guard);
-            panic!("{DISPATCHER_ALREADY_INIT_WARNING}");
+        {
+            let dispatcher_guard = DISPATCHER.lock().expect("cannot lock the dispatcher");
+            if dispatcher_guard.is_some() {
+                drop(dispatcher_guard);
+                panic!("{DISPATCHER_ALREADY_INIT_WARNING}");
+            }
         }
         // this function is implemented in dispatcher/src/create.ts
         let create_dispatcher = Function::new_with_args("ARGS", include_str!("dispatcher.js"));
@@ -218,8 +221,14 @@ impl ThreadDispatcherInit {
                 _ => break,
             }
         }
-
-        *dispatcher_guard = Some(send);
+        {
+            let mut dispatcher_guard = DISPATCHER.lock().expect("cannot lock the dispatcher");
+            if dispatcher_guard.is_some() {
+                drop(dispatcher_guard);
+                panic!("{DISPATCHER_ALREADY_INIT_WARNING}");
+            }
+            *dispatcher_guard = Some(send);
+        }
 
         Ok(())
     }
@@ -329,10 +338,27 @@ where
         dispatcher.clone()
     };
 
+    // since the thread proc is async and driven by JS, Rust aborts
+    // are now impossible to be captured reliably as it requires adding
+    // a catch handler to every promise that could run Rust code.
+    //
+    // unhandledRejection event will also not work because there could be legitimate
+    // JS unhandledRejection that is harmless to Rust.
+    //
+    // The solution here is sending a signal at the end of the future to prove
+    // that none of the .poll() calls caused an abort (which will 'abort' and by definition
+    // stop future .poll calls)
+    // let (proof_send, proof_recv) = util::assert_unwind_safe_oneshot_channel();
     // assert unwind safety here only to work around wasm_bindgen's
     // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
     // See ThreadProc for explanation of the unwind safety model
-    let f_boxed: ThreadProc = AssertUnwindSafe(Box::pin(async move { Box::new(f.await).into() }));
+    let f_boxed: ThreadProc = AssertUnwindSafe(Box::pin(async move {
+        let result = f.await;
+        // let _ = proof_send.0.send(());
+        // when this promise finishes the proof_recv definitely got the signal
+        // if the future didn't abort
+        Box::new(result).into()
+    }));
     let next_id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
     let (send, recv) = util::assert_unwind_safe_oneshot_channel();
     dispatcher

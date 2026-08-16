@@ -10,6 +10,7 @@ import fs from "node:fs";
 
 const RUST_SRC = path.resolve(import.meta.dirname, "../lib/src");
 const RUST_BINDING = path.resolve(RUST_SRC, "binding.rs");
+const RUST_BINDING_CONSTANTS = path.resolve(RUST_SRC, "binding_constants.rs");
 const OUTPUT = path.resolve(import.meta.dirname, "src", "binding.gen.ts");
 
 const main = (): number => {
@@ -18,8 +19,11 @@ const main = (): number => {
     }
     const binding_file_lines = fs.readFileSync(RUST_BINDING, { encoding: "utf8" }).split("\n");
     const export_decls = parse_extern_block_in_binding_file(binding_file_lines);
-    const export_consts = parse_export_constants(binding_file_lines);
     const export_funcs = parse_export_functions(binding_file_lines);
+    const binding_consts_file_lines = fs
+        .readFileSync(RUST_BINDING_CONSTANTS, { encoding: "utf8" })
+        .split("\n");
+    const export_consts = parse_export_constants(binding_consts_file_lines);
 
     const js_arg_types: JsArgType[] = [];
     for (const file_name of fs.readdirSync(RUST_SRC)) {
@@ -35,6 +39,7 @@ const main = (): number => {
         "declare const RustType: unique symbol;",
         "export type NonNull<T> = number & { readonly [RustType]: T };",
         "export type Option<T> = T | undefined;",
+        "export type bool = boolean;",
         "",
         "// section: extern block",
         ...export_decls.map((x) => `export type WasmBindgenExport__${x} = WasmBindgen["${x}"]`),
@@ -45,11 +50,7 @@ const main = (): number => {
         output.push(...format_doc(doc, ""));
         output.push(`export const ${ident}: ${ty} = ${expr};`);
     }
-    output.push(
-        "",
-        "// section: wasm bindgen exports",
-        "export interface WasmBindgen {",
-    );
+    output.push("", "// section: wasm bindgen exports", "export interface WasmBindgen {");
 
     for (const { doc, ident, args, retty } of export_funcs) {
         output.push("");
@@ -134,14 +135,14 @@ const parse_export_functions = (binding_file_lines: string[]) => {
                 break;
             }
         }
-        for (; i < binding_file_lines.length ; i++) {
+        for (; i < binding_file_lines.length; i++) {
             const line = binding_file_lines[i].trim();
             if (!line.startsWith("///")) {
                 break;
             }
             doc.push(line.substring(3).trim());
         }
-        for (; i < binding_file_lines.length ; i++) {
+        for (; i < binding_file_lines.length; i++) {
             const line = binding_file_lines[i].trim();
             if (line === "#[wasm_bindgen(skip_typescript)]") {
                 break;
@@ -152,7 +153,7 @@ const parse_export_functions = (binding_file_lines: string[]) => {
             continue;
         }
         let fn_item = "";
-        for (; i < binding_file_lines.length ; i++) {
+        for (; i < binding_file_lines.length; i++) {
             const line = binding_file_lines[i].trim();
             fn_item += line;
             if (line.endsWith("{")) {
@@ -176,12 +177,9 @@ const parse_export_functions = (binding_file_lines: string[]) => {
             // console.log("-- arg:" + arg);
             const [ident, ty] = arg.split(":", 2);
             const ty_trimmed = ty.trim();
-            if (!ty_trimmed.startsWith("NonNull<") || !ty_trimmed.endsWith(">")) {
-                throw new Error("currently we only support NonNull in WASM API");
-            }
             arg_parsed.push({
                 ident: ident.trim(),
-                ty: parse_rust_type(ty_trimmed)
+                ty: parse_rust_type(ty_trimmed),
             });
         }
 
@@ -226,7 +224,10 @@ const parse_js_arg_vecs = (file_lines: string[]) => {
         }
         // console.log("parsing macro: " + macro_invoke);
         const start_i = macro_invoke.indexOf("js_arg_vec!");
-        macro_invoke = macro_invoke.substring(start_i + "js_arg_vec!".length).trimStart().substring(1);
+        macro_invoke = macro_invoke
+            .substring(start_i + "js_arg_vec!".length)
+            .trimStart()
+            .substring(1);
         const end_i = macro_invoke.indexOf("};");
         macro_invoke = macro_invoke.substring(0, end_i).trim();
         const last_space_i = macro_invoke.lastIndexOf(" ");
@@ -254,10 +255,10 @@ const parse_js_arg_vecs = (file_lines: string[]) => {
 };
 
 interface Constant {
-    doc: string[],
-    ident: string,
-    ty: string,
-    expr: string
+    doc: string[];
+    ident: string;
+    ty: string;
+    expr: string;
 }
 
 const parse_export_constants = (file_lines: string[]): Constant[] => {
@@ -272,7 +273,7 @@ const parse_export_constants = (file_lines: string[]): Constant[] => {
                 break;
             }
         }
-        for (; i < file_lines.length ; i++) {
+        for (; i < file_lines.length; i++) {
             const line = file_lines[i].trim();
             if (!line.startsWith("///")) {
                 break;
@@ -283,7 +284,7 @@ const parse_export_constants = (file_lines: string[]): Constant[] => {
             continue;
         }
         let const_item = "";
-        for (; i < file_lines.length ; i++) {
+        for (; i < file_lines.length; i++) {
             const line = file_lines[i].trim();
             const_item += line;
             if (line.endsWith(";")) {
@@ -304,7 +305,7 @@ const parse_export_constants = (file_lines: string[]): Constant[] => {
         });
     }
     return out;
-}
+};
 
 const trim_end_white_and = (text: string, char: string): string => {
     while (true) {
@@ -321,7 +322,10 @@ const trim_end_white_and = (text: string, char: string): string => {
 
 const parse_rust_type = (ty: string): string => {
     switch (ty) {
-        case "u32": return "number";
+        case "u32":
+            return "number";
+        case "bool":
+            return "boolean";
     }
     if (ty.startsWith("NonNull<") && ty.endsWith(">")) {
         const inner = ty.substring("NonNull<".length, ty.length - 1).trim();
@@ -332,7 +336,7 @@ const parse_rust_type = (ty: string): string => {
         return ty.substring("js_type!(".length, ty.length - 1).trim();
     }
     return ty;
-}
+};
 
 const format_doc = (doc: string[], indent: string): string[] => {
     const output: string[] = [];
@@ -346,6 +350,6 @@ const format_doc = (doc: string[], indent: string): string[] => {
         output.push(`${indent} */`);
     }
     return output;
-}
+};
 
 main();

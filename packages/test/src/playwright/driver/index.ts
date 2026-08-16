@@ -12,7 +12,15 @@ const main = async () => {
     const prefix = `${profile}-${panicRuntime}-${host}`;
     const target = pathnamePart.substring(prefix.length + 1);
     const quad = `${prefix}-${target}`;
+
     console.log(`starting web worker for quad: ${quad}`);
+
+    const testFilters =
+        new URLSearchParams(location.search)
+            .get("tests")
+            ?.split(",")
+            ?.map((x) => x.trim()) || [];
+
     switch (target) {
         case "no-modules": {
             const scriptPath = location.origin + `/bundle/${quad}/example.js`;
@@ -36,7 +44,7 @@ const main = async () => {
                 const d = e.data;
                 setOutput(d);
                 if (d === "started") {
-                    worker.postMessage({ wasmBytes, bindgenScript });
+                    worker.postMessage({ testFilters, wasmBytes, bindgenScript });
                 }
                 if (d === "done") {
                     worker.terminate();

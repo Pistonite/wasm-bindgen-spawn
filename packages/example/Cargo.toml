@@ -12,4 +12,3 @@ wasm-bindgen-spawn.path = "../lib"
 console_error_panic_hook = "0.1.7"
 [features]
 no-wbg-module = []
-native-harness = []

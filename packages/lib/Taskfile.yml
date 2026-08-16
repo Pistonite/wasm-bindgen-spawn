@@ -7,5 +7,12 @@ includes:
     optional: true
 
 tasks:
+  check:
+    - task: cargo:clippy-all
+    - task: cargo:fmt-check
+  fix:
+    - task: cargo:fmt-fix
   dev-doc:
     - task: cargo:watch-serve-doc
+
+

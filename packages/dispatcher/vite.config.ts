@@ -17,8 +17,7 @@ const plugin: Plugin = {
         const workerCode = wrapExport(bundle(path.join(distDir, "worker.js")));
         const workerExpr = serializeCode(workerCode);
         const createCode = bundle(path.join(distDir, "create.js"));
-        const output =
-            `let __return,DISPATCHER_JS=${dispatcherExpr},WORKER_JS=${workerExpr};${createCode};return __return;`;
+        const output = `let __return,DISPATCHER_JS=${dispatcherExpr},WORKER_JS=${workerExpr};${createCode};return __return;`;
         // ensure dead code elimination works
         if (!BUILD_DEBUG) {
             if (output.includes("[debug]")) {
@@ -36,7 +35,9 @@ const plugin: Plugin = {
             output,
         );
         const size = output.length;
-        console.log(`bundled script written to /packages/lib/src/dispatcher.js (${size} bytes ${BUILD_DEBUG ? "[DEBUG]" : ""})`);
+        console.log(
+            `bundled script written to /packages/lib/src/dispatcher.js (${size} bytes ${BUILD_DEBUG ? "[DEBUG]" : ""})`,
+        );
     },
 };
 
@@ -47,22 +48,21 @@ const bundle = (script: string): string => {
 };
 const wrapExport = (script: string): string => {
     return `const _m=(()=>{let __export;${script};return __export})();`;
-}
+};
 const serializeCode = (code: string): string => {
     const expr = JSON.stringify(code);
     if (!BUILD_DEBUG) {
         return expr;
     }
-    const lines = expr.substring(1, expr.length-1).split("\\n");
+    const lines = expr.substring(1, expr.length - 1).split("\\n");
     return lines.map((x) => `"${x}"`).join(`+"\\n"+\n`);
-}
+};
 
 export default <UserConfig>configure({
     plugins: [plugin],
     define: {
         __DEBUG__: true,
         "import.meta.env.BUILD_DEBUG": BUILD_DEBUG,
-        __debug: BUILD_DEBUG ? `(await import('./shared.ts')).__debugImpl`
-            : `(function(){})`
-    }
+        __debug: BUILD_DEBUG ? `(await import('./shared.ts')).__debugImpl` : `(function(){})`,
+    },
 });

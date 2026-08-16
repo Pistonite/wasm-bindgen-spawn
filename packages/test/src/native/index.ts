@@ -1,27 +1,49 @@
 import child_process from "node:child_process";
 import path from "node:path";
 
-import { NATIVE_ENGINES, type NativeEngine, PANIC_RUNTIMES, PROFILES } from "#framework";
-
-const QUADS: string[] = [];
-for (const profile of PROFILES) {
-    for (const panicRuntime of PANIC_RUNTIMES) {
-        for (const target of ["no-modules"]) {
-            QUADS.push(`${profile}-${panicRuntime}-node-${target}`);
-        }
-    }
-}
-
-const DRIVER_DIR = path.resolve(import.meta.dirname, "driver");
+import { getTargetTestQuads, NATIVE_ENGINES, type NativeEngine } from "#framework";
 
 const main = async () => {
+    const args = process.argv.slice(2);
+    const engines: NativeEngine[] = [];
+    const quadsFilter: string[] = [];
+    const testFilters: string[] = [];
+    for (const arg of args) {
+        if (arg === "--node") {
+            engines.push("node");
+            continue;
+        }
+        if (arg === "--bun") {
+            engines.push("bun");
+            continue;
+        }
+        if (arg === "--deno") {
+            engines.push("deno");
+            continue;
+        }
+        if (arg.startsWith("-E")) {
+            testFilters.push(arg.substring(2));
+            continue;
+        }
+        quadsFilter.push(arg);
+    }
+    if (engines.length === 0) {
+        engines.push(...NATIVE_ENGINES);
+    }
+
+    const quads = getTargetTestQuads(quadsFilter, "node");
+    if (!quads.length) {
+        console.error("no tests specified");
+        process.exit(1);
+    }
+
     const failed: string[] = [];
-    // quads run one at a time, but the engines run against each quad together -
-    // they write to separate log dirs so there's nothing to race over
-    for (const quad of QUADS) {
+    // run quad one at a time to avoid overwhelm all cores
+    for (const quad of quads) {
         const results = await Promise.all(
-            NATIVE_ENGINES.map(
-                async (engine) => [engine, await runTestForQuad(engine, quad)] as const,
+            engines.map(
+                async (engine) =>
+                    [engine, await runTestForQuad(engine, quad, testFilters)] as const,
             ),
         );
         for (const [engine, ok] of results) {
@@ -37,9 +59,13 @@ const main = async () => {
     console.log("all native tests passed");
 };
 
-const runTestForQuad = async (engine: NativeEngine, quad: string): Promise<boolean> => {
+const runTestForQuad = async (
+    engine: NativeEngine,
+    quad: string,
+    testFilters: string[],
+): Promise<boolean> => {
     const script = getDriverScript(quad);
-    const [command, ...args] = getEngineCommand(engine, script, quad);
+    const [command, ...args] = getEngineCommand(engine, script, quad, testFilters);
     const prefix = `[${engine}/${quad}] `;
 
     console.log(`running ${engine} ${quad}`);
@@ -78,20 +104,26 @@ const runTestForQuad = async (engine: NativeEngine, quad: string): Promise<boole
 };
 
 const getDriverScript = (quad: string): string => {
+    const DRIVER_DIR = path.resolve(import.meta.dirname, "driver");
     const [profile, panicRuntime, host] = quad.split("-", 3);
     const target = quad.substring(`${profile}-${panicRuntime}-${host}-`.length);
     return path.join(DRIVER_DIR, `${target.replaceAll("-", "_")}.ts`);
 };
 
-const getEngineCommand = (engine: NativeEngine, script: string, quad: string): string[] => {
+const getEngineCommand = (
+    engine: NativeEngine,
+    script: string,
+    quad: string,
+    testFilters: string[],
+): string[] => {
     switch (engine) {
         case "node":
-            return ["node", script, quad];
+            return ["node", script, quad, ...testFilters];
         case "bun":
-            return ["bun", script, quad];
+            return ["bun", script, quad, ...testFilters];
         case "deno":
             // needs full permissions to read the bundles and write the harness logs
-            return ["deno", "-A", script, quad];
+            return ["deno", "-A", script, quad, ...testFilters];
     }
 };
 

@@ -6,7 +6,7 @@ export type NoModulesWasmBundle =
 
 export const PROFILES = ["debug", "release"] as const;
 export type Profile = (typeof PROFILES)[number];
-export const PANIC_RUNTIMES = [/*"abort", */ "unwind"] as const;
+export const PANIC_RUNTIMES = ["abort", "unwind"] as const;
 export type PanicRuntime = (typeof PANIC_RUNTIMES)[number];
 export const TARGETS = ["no-modules", "web", "nodejs", "deno", "bundler"] as const;
 export type Target = (typeof TARGETS)[number];
@@ -19,6 +19,34 @@ export const BROWSER_ENGINES = ["firefox", "msedge", "chrome", "webkit"] as cons
 export type BrowserEngine = (typeof BROWSER_ENGINES)[number];
 
 export type Engine = NativeEngine | BrowserEngine;
+
+export const getTargetTestQuads = (filters: string[], host: Host): string[] => {
+    const shouldRun = (triple: string): boolean => {
+        if (!filters.length) {
+            return true;
+        }
+        for (const filter of filters) {
+            if (triple.includes(filter)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const quads: string[] = [];
+    for (const profile of PROFILES) {
+        for (const panicRuntime of PANIC_RUNTIMES) {
+            for (const target of ["no-modules"]) {
+                const triple = `${profile}-${panicRuntime}-${target}`;
+                if (shouldRun(triple)) {
+                    const quad = `${profile}-${panicRuntime}-${host}-${target}`;
+                    quads.push(quad);
+                }
+            }
+        }
+    }
+
+    return quads;
+};
 
 export const getCurrentEngineName = (): Engine => {
     try {
@@ -68,10 +96,10 @@ export const getEngineNameFromUserAgent = (ua: string): Engine => {
 
 export const measure = (name: string, f: () => void) => {
     const start = performance.now();
-    console.log(`${name} - start`);
+    console.log(`[test ${name}] start >>`);
     f();
     const elapsed = Math.floor(performance.now() - start);
-    console.log(`${name} - ${elapsed}ms`);
+    console.log(`[test ${name}] << done ${elapsed}ms`);
 };
 
 export const getTargetSubdir = (sub: "test" | "bundle" | "framework") =>

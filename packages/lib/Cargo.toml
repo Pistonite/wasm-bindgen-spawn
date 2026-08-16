@@ -25,3 +25,4 @@ oneshot = { workspace = true, features = ["std"] }
 static_assertions.workspace = true
 thiserror.workspace = true
 futures-util.workspace = true
+pin-project.workspace = true

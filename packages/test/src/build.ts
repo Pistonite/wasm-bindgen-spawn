@@ -4,7 +4,15 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 
-import { type Host, HOSTS, type PanicRuntime, type Profile, type Target } from "#framework";
+import {
+    type Host,
+    HOSTS,
+    PANIC_RUNTIMES,
+    type PanicRuntime,
+    type Profile,
+    PROFILES,
+    type Target,
+} from "#framework";
 
 const main = async () => {
     const targetDir = getTargetDir();
@@ -15,20 +23,25 @@ const main = async () => {
 
     runFrameworkBuild();
 
-    runCargoBuild("unwind", "debug");
-    runCargoBuild("unwind", "release");
-    const promises = await Promise.allSettled([
-        runWasmPack("unwind", "debug", "no-modules"),
-        runWasmPack("unwind", "debug", "web"),
-        runWasmPack("unwind", "release", "no-modules"),
-        runWasmPack("unwind", "release", "web"),
-    ]);
-    const output: WasmPackOutput[] = [];
-    for (const p of promises) {
-        if (p.status === "rejected") {
-            throw p.reason;
+    for (const profile of PROFILES) {
+        for (const panicRuntime of PANIC_RUNTIMES) {
+            runCargoBuild(panicRuntime, profile);
         }
-        output.push(p.value);
+    }
+    const output: WasmPackOutput[] = [];
+    for (const target of ["no-modules", "web"] as const) {
+        const promises = await Promise.allSettled([
+            runWasmPack("unwind", "debug", target),
+            runWasmPack("unwind", "release", target),
+            runWasmPack("abort", "debug", target),
+            runWasmPack("abort", "release", target),
+        ]);
+        for (const p of promises) {
+            if (p.status === "rejected") {
+                throw p.reason;
+            }
+            output.push(p.value);
+        }
     }
 
     const expectedHashs: Record<string, string> = {};

@@ -1,6 +1,14 @@
 version: '3'
 
+includes:
+  cargo:
+    taskfile: ../../node_modules/mono-dev/task/cargo.yaml
+    internal: true
+    optional: true
+
 tasks:
-  build:
-    - cargo build --target wasm32-unknown-unknown
-    
+  check:
+    - task: cargo:clippy-all
+    - task: cargo:fmt-check
+  fix:
+    - task: cargo:fmt-fix

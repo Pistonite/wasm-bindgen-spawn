@@ -1,22 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
 
-import { PANIC_RUNTIMES, PROFILES } from "#framework";
+import { getTargetTestQuads } from "#framework";
 
-const QUADS: string[] = [];
-for (const profile of PROFILES) {
-    for (const panicRuntime of PANIC_RUNTIMES) {
-        for (const target of ["no-modules"]) {
-            QUADS.push(`${profile}-${panicRuntime}-browser-${target}`);
-        }
-    }
-}
+const quadFilters: string[] =
+    process.env.PW_WBS_QUAD_FILTERS?.split(",")?.map((x) => x.trim()) ?? [];
+const testFilters: string[] =
+    process.env.PW_WBS_TEST_FILTERS?.split(",")?.map((x) => x.trim()) ?? [];
+const quads = getTargetTestQuads(quadFilters, "browser");
 
 // time wait for 'done' (or error) to be reported from the page
 const RUN_TIMEOUT_MS = 150 * 1000;
 
 // make sure we don't run this in vitest
 if (!import.meta.vitest) {
-    for (const quad of QUADS) {
+    for (const quad of quads) {
         test(quad, async ({ page }, testInfo) => {
             // the per-test timeout has to outlast the poll, or playwright kills
             // the test before we get to report what the page actually said
@@ -38,7 +35,13 @@ const runTestForQuad = async (page: Page, quad: string, browser: string) => {
     page.on("console", (msg) => console.log(`${prefix} ${msg.text()}`));
     page.on("pageerror", (e) => console.log(`${prefix} pageerror: ${e.message}`));
 
-    await page.goto(`http://localhost:3001/html/${quad}/index.html`);
+    if (testFilters.length) {
+        await page.goto(
+            `http://localhost:3001/html/${quad}/index.html?tests=${testFilters.join(",")}`,
+        );
+    } else {
+        await page.goto(`http://localhost:3001/html/${quad}/index.html`);
+    }
 
     // the driver page mirrors the worker's status into this div: "loading...",
     // then "started", then either "done" or an "error..." message
