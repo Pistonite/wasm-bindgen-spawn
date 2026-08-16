@@ -1,9 +1,14 @@
 import child_process from "node:child_process";
 
-import { PACKAGE_DIR } from "#framework";
+import { getPackageRoot } from "#framework";
 
 import { startHttpServer, stopHttpServer } from "./http_server.ts";
-import { PW_PORT, rebuildPlaywrightImage, startPlaywrightContainer, stopPlaywrightContainer } from "./pw_container.ts";
+import {
+    PW_PORT,
+    rebuildPlaywrightImage,
+    startPlaywrightContainer,
+    stopPlaywrightContainer,
+} from "./pw_container.ts";
 import { getPlaywrightCli } from "./util.ts";
 
 const main = async () => {
@@ -34,7 +39,7 @@ const main = async () => {
             await startPlaywrightContainer();
         }
         // ensure things are stabilized
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 1000));
 
         if (!httpOnly) {
             let code: number;
@@ -43,7 +48,7 @@ const main = async () => {
             } finally {
                 console.log("waiting for log flushing to complete");
                 // wait for a bit to ensure log files are completely flushed
-                await new Promise(r => setTimeout(r, 5000));
+                await new Promise((r) => setTimeout(r, 5000));
                 await cleanup();
             }
 
@@ -51,8 +56,7 @@ const main = async () => {
         } else {
             console.log("--http-only: only running http server, kill with ctrl-c");
         }
-
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         await cleanup();
         console.error("fatal error occured, unable to run test");
@@ -71,7 +75,7 @@ const runPlaywright = async (): Promise<number> => {
             [cli, "test"],
             {
                 stdio: "inherit",
-                cwd: PACKAGE_DIR,
+                cwd: getPackageRoot(),
                 env: {
                     PW_TEST_CONNECT_WS_ENDPOINT: `ws://localhost:${PW_PORT}`,
                 },
@@ -87,6 +91,6 @@ const runPlaywright = async (): Promise<number> => {
 
 const cleanup = async () => {
     await Promise.all([stopHttpServer(), stopPlaywrightContainer()]);
-}
+};
 
 void main();

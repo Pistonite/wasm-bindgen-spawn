@@ -19,75 +19,28 @@ tasks:
     - sudo pnpm exec playwright install-deps
 
   build:
-    - task: dispatcher:build
-    - node build.ts
-    # - mkdir -p target/wasm-pack/logs
-    # - task: build-cargo
-    #   vars: { BUILD_DIR: unwind }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: unwind, BUILD_TARGET: no-modules }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: unwind, BUILD_TARGET: web }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: unwind, BUILD_TARGET: nodejs }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: unwind, BUILD_TARGET: deno, BUILD_ARGS: --features no-wbg-module }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: unwind, BUILD_TARGET: bundler, BUILD_ARGS: --features no-wbg-module }
-    # - task: build-cargo
-    #   vars: { BUILD_DIR: abort }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: abort, BUILD_TARGET: no-modules }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: abort, BUILD_TARGET: web }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: abort, BUILD_TARGET: nodejs }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: abort, BUILD_TARGET: deno, BUILD_ARGS: --features no-wbg-module }
-    # - task: wasm-pack
-    #   vars: { BUILD_DIR: abort, BUILD_TARGET: bundler, BUILD_ARGS: --features no-wbg-module }
-    # - node scripts/post-build.ts
-
-  # build-cargo:
-  #   internal: true
-  #   dir: 'build-{{.BUILD_DIR}}'
-  #   cmds:
-  #     - cargo build --release --target wasm32-unknown-unknown
-  #
-  # wasm-pack:
-  #   internal: true
-  #   dir: 'build-{{.BUILD_DIR}}'
-  #   cmds:
-  #     - cmd: >
-  #         echo 'building {{.BUILD_DIR}} --target {{.BUILD_TARGET}}';
-  #         rm -rf ../target/wasm-pack/{{.BUILD_DIR}}-{{.BUILD_TARGET}};
-  #         wasm-pack build -t {{.BUILD_TARGET}}
-  #         --no-gitignore --no-pack --dev
-  #         --out-dir ../target/wasm-pack/{{.BUILD_DIR}}-{{.BUILD_TARGET}}
-  #         --out-name example
-  #         -- {{.BUILD_ARGS}}
-  #         > ../target/wasm-pack/logs/{{.BUILD_DIR}}-{{.BUILD_TARGET}}.out
-  #         2> ../target/wasm-pack/logs/{{.BUILD_DIR}}-{{.BUILD_TARGET}}.err
-  #       silent: true
-  #
-  # build-harness:
-  #   - cp target/wasm-pack/unwind-web/example.d.ts src/wasm_gen.d.ts
-
+    desc: Build files needed for tests
+    cmds:
+      - task: dispatcher:build
+      - node src/build.ts
 
   check:
     - task: ecma:check
+  fix:
+    - task: ecma:fix
 
   test:
-    - task: ecma:test
+    - task: build
+    - task: run-native
+    - task: run-browser
+    - task: run-assertion
 
-  # run-pw-server: 
-  #   - >
-  #     docker run --add-host=hostmachine:host-gateway
-  #     -p 3000:3000 --rm --init -it --workdir /home/pwuser --user pwuser
-  #     mcr.microsoft.com/playwright:v1.62.0-noble
-  #     /bin/sh -c "npx -y playwright@1.62.0 run-server --port 3000 --host 0.0.0.0"
-
-  run-pw:
+  run-native:
+    desc: Run native targets using node/bun/deno
+    cmds:
+      - node src/native/index.ts
+  run-browser:
+    desc: Run browser targets using playwright
     cmds:
       - node src/playwright/index.ts
 
@@ -99,7 +52,13 @@ tasks:
     cmds:
       - node src/playwright/index.ts --http-only --https
 
+  run-assertion:
+    desc: Run assertions on the logs produced by the tests
+    cmds:
+      - task: ecma:test
+
   log:
+    desc: View log dump
     cmds:
       - node src/tests/index.ts {{.CLI_ARGS}}
 

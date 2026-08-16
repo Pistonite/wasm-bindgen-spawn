@@ -3,3 +3,4 @@
 
 /// <reference lib="dom">
 /// <reference types="node">
+/// <reference types="mono-dev/lib-types">

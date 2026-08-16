@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { TARGET_TEST } from "./paths.ts";
+import { getTargetSubdir } from "./util.ts";
 
 export const readLogFile = (engineLogName: string): LogFile => {
-    const [engine, logName ] = engineLogName.split("/", 2);
+    const [engine, logName] = engineLogName.split("/", 2);
     return new LogFile(engine, logName);
-}
+};
 
 export class LogFile {
     /** the engine used to execute the test */
@@ -16,28 +16,33 @@ export class LogFile {
     public testLogMap: Record<string, TestLog> = {};
     constructor(engine: string, logName: string) {
         this.engine = engine;
-        const logPath = path.join(TARGET_TEST, engine, logName);
+        const logPath = path.join(getTargetSubdir("test"), engine, logName);
         const [_profile, panicRuntime, _host, _] = logName.split("-", 4);
-        this.panicRuntime = panicRuntime as "abort"|"unwind";
-        const entries: RawLogEntry[] =
-        fs.readFileSync(logPath, "utf8").split("\n").map((x)=>{
-            const line = x.trim();
-            if (!line) {
-                return undefined;
-            }
-            try {
-                return JSON.parse(line);
-            } catch(e) {
-                throw new Error("error parsing line: "+line, {cause:e})
-            }
-        }).filter(Boolean);
-        entries.sort((a,b) => {
-            return a.timestamp - b.timestamp
+        this.panicRuntime = panicRuntime as "abort" | "unwind";
+        const entries: RawLogEntry[] = fs
+            .readFileSync(logPath, "utf8")
+            .split("\n")
+            .map((x) => {
+                const line = x.trim();
+                if (!line) {
+                    return undefined;
+                }
+                try {
+                    return JSON.parse(line);
+                } catch (e) {
+                    throw new Error("error parsing line: " + line, { cause: e });
+                }
+            })
+            .filter(Boolean);
+        entries.sort((a, b) => {
+            return a.timestamp - b.timestamp;
         });
         const initMainThreadId = entries.filter((x) => x.type === "init-main-thread-id")[0];
         const mainThreadId = initMainThreadId.thread;
         if (initMainThreadId.payload !== `ThreadId(${mainThreadId})`) {
-            throw new Error("unexpected format of thread id payload; did rust's thread id implementation change?");
+            throw new Error(
+                "unexpected format of thread id payload; did rust's thread id implementation change?",
+            );
         }
         // find all the test start messages
         const tests: [number, number, number, string][] = [];
@@ -55,7 +60,9 @@ export class LogFile {
                     }
                 }
                 if (!found) {
-                    throw new Error("invalid log file: test " + entry.payload + "ends before start");
+                    throw new Error(
+                        "invalid log file: test " + entry.payload + "ends before start",
+                    );
                 }
             }
         }
@@ -75,11 +82,12 @@ export class LogFile {
                 }
             }
             if (endTimestamp === -1) {
-                throw new Error("failed to find end timestamp for test "+name);
+                throw new Error("failed to find end timestamp for test " + name);
             }
-            const duration = endTimestamp-startTimestamp;
+            const duration = endTimestamp - startTimestamp;
             this.testLogMap[name] = {
-                duration, entries: processedEntries
+                duration,
+                entries: processedEntries,
             };
         }
     }
@@ -94,10 +102,10 @@ export class LogFile {
 }
 
 export interface RawLogEntry {
-    timestamp: number,
-    thread: number,
-    type: string,
-    payload: string,
+    timestamp: number;
+    thread: number;
+    type: string;
+    payload: string;
 }
 
 export interface TestLog {
@@ -121,13 +129,16 @@ export class LogEntry {
             let colonI = panicLocation.lastIndexOf(":");
             let rest = panicLocation.substring(0, colonI);
             colonI = rest.lastIndexOf(":");
-            const col = parseInt(rest.substring(colonI+1));
+            const col = parseInt(rest.substring(colonI + 1));
             rest = rest.substring(0, colonI);
             colonI = rest.lastIndexOf(":");
-            const line = parseInt(rest.substring(colonI+1));
+            const line = parseInt(rest.substring(colonI + 1));
             rest = rest.substring(0, colonI);
             const relPathI = rest.lastIndexOf("packages");
-            const relPath = rest.substring(relPathI + "packages".length).replaceAll("\\", "/").trim();
+            const relPath = rest
+                .substring(relPathI + "packages".length)
+                .replaceAll("\\", "/")
+                .trim();
             this.panic = { file: relPath, line, col, message };
         } else {
             this.payload = JSON.parse(raw.payload);
@@ -161,8 +172,8 @@ export const logEntryToString = (entry: LogEntry): string => {
 };
 
 export interface PanicInfo {
-    file: string,
-    line: number,
-    col: number,
-    message: string
+    file: string;
+    line: number;
+    col: number;
+    message: string;
 }

@@ -1,8 +1,7 @@
-
 import child_process from "node:child_process";
 import path from "node:path";
 
-import { PACKAGE_DIR } from "#framework";
+import { getPackageRoot } from "#framework";
 
 import { getPlaywrightVersion } from "./util.ts";
 
@@ -31,10 +30,10 @@ export const stopPlaywrightContainer = () => {
         if (instance) {
             instance.kill("SIGTERM");
         }
-    }catch(e) {
+    } catch (e) {
         console.error(e);
     }
-}
+};
 
 export const startPlaywrightContainer = async (): Promise<void> => {
     const version = getPlaywrightVersion();
@@ -48,15 +47,22 @@ export const startPlaywrightContainer = async (): Promise<void> => {
         "run",
         // need to share network so we can load from localhost which
         // is treated as secure context
-        "--network", "host",
+        "--network",
+        "host",
         // chromium-family browsers OOM on the default 64MB /dev/shm
-        "--ipc", "host",
-        "--rm", "--init",
-        "--name", CONTAINER_NAME,
-        "--workdir", "/home/pwuser",
-        "--user", "pwuser",
+        "--ipc",
+        "host",
+        "--rm",
+        "--init",
+        "--name",
+        CONTAINER_NAME,
+        "--workdir",
+        "/home/pwuser",
+        "--user",
+        "pwuser",
         image,
-        "/bin/sh", "-c",
+        "/bin/sh",
+        "-c",
         // playwright-core is installed globally in the image, so nothing is
         // fetched from npm when the container starts
         `playwright-core run-server --port ${PW_PORT} --host 0.0.0.0`,
@@ -98,11 +104,11 @@ export const startPlaywrightContainer = async (): Promise<void> => {
 
     instance = child;
     console.log("playwright server ready");
-}
+};
 
 export const getImageTag = (version: string): string => {
     return `${IMAGE_NAME}:v${version}-noble`;
-}
+};
 
 /**
  * Build the image if it's not already local.
@@ -112,28 +118,36 @@ export const getImageTag = (version: string): string => {
  */
 const ensureImage = (version: string): void => {
     const image = getImageTag(version);
-    const inspect = child_process.spawnSync("docker", ["image", "inspect", image], { stdio: "ignore" });
+    const inspect = child_process.spawnSync("docker", ["image", "inspect", image], {
+        stdio: "ignore",
+    });
     if (inspect.status === 0) {
         return;
     }
     buildImage(version);
-}
+};
 
 /** force a rebuild, for picking up edits to the Dockerfile */
 export const rebuildPlaywrightImage = (): void => {
     buildImage(getPlaywrightVersion());
-}
+};
 
 const buildImage = (version: string): void => {
     const image = getImageTag(version);
     console.log(`building container image ${image}`);
-    const build = child_process.spawnSync("docker", [
-        "build",
-        "--build-arg", `PW_VERSION=${version}`,
-        "-t", image,
-        path.join(PACKAGE_DIR, "docker"),
-    ], { stdio: "inherit" });
+    const build = child_process.spawnSync(
+        "docker",
+        [
+            "build",
+            "--build-arg",
+            `PW_VERSION=${version}`,
+            "-t",
+            image,
+            path.join(getPackageRoot(), "docker"),
+        ],
+        { stdio: "inherit" },
+    );
     if (build.status !== 0) {
         throw new Error(`failed to build ${image}`);
     }
-}
+};

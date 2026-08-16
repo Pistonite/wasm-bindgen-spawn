@@ -1,15 +1,18 @@
-
 import { X509Certificate } from "node:crypto";
 import http from "node:http";
 import https from "node:https";
 import fs from "node:fs";
 import path from "node:path";
 
-import { BROWSER_ENGINES, getEngineNameFromUserAgent, PACKAGE_DIR, TARGET_BUNDLE, TARGET_FRAMEWORK, TARGET_TEST } from "#framework";
+import {
+    BROWSER_ENGINES,
+    getEngineNameFromUserAgent,
+    getPackageRoot,
+    getTargetSubdir,
+} from "#framework";
 
 // port for the HTTP server that the browser automation navigates to
 const HTTP_PORT = 3001;
-
 
 const COMMON_HEADERS = {
     // required headers for shared memory and atomics
@@ -23,7 +26,6 @@ const COMMON_HEADERS = {
 let instance: http.Server | https.Server | undefined;
 let closed = false;
 
-
 export const stopHttpServer = async () => {
     if (closed) {
         return;
@@ -36,15 +38,15 @@ export const stopHttpServer = async () => {
             instance.closeAllConnections();
             await new Promise<void>((resolve) => instance?.close(() => resolve()));
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e);
     }
-}
+};
 
 export const startHttpServer = async (useHttps: boolean): Promise<void> => {
     // clean the browser test outputs
     for (const engine of BROWSER_ENGINES) {
-        const dir = path.join(TARGET_TEST, engine);
+        const dir = path.join(getTargetSubdir("test"), engine);
         fs.rmSync(dir, { recursive: true, force: true });
         fs.mkdirSync(dir, { recursive: true });
     }
@@ -73,7 +75,7 @@ export const startHttpServer = async (useHttps: boolean): Promise<void> => {
             // whatever this resolves to has to point back at this machine
             host = cert.host;
         } catch {
-            console.error("failed to load certificate, falling back to http")
+            console.error("failed to load certificate, falling back to http");
             server = http.createServer(handler);
             host = "localhost";
         }
@@ -100,7 +102,7 @@ interface Cert {
 }
 
 const loadCert = (): Cert => {
-    const CERT_DIR = path.resolve(PACKAGE_DIR, "..", "..", ".cert");
+    const CERT_DIR = path.resolve(getPackageRoot(), "..", "..", ".cert");
     const certPath = path.join(CERT_DIR, "cert.pem");
     const keyPath = path.join(CERT_DIR, "cert.key");
     for (const p of [certPath, keyPath]) {
@@ -135,7 +137,11 @@ const loadCert = (): Cert => {
 };
 
 const QUAD_PATTERN = /^[a-z0-9-]+$/;
-const handleRequest = async (logQueue: Map<string, Promise<void>>,req: http.IncomingMessage, res: http.ServerResponse) => {
+const handleRequest = async (
+    logQueue: Map<string, Promise<void>>,
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+) => {
     const url = new URL(req.url ?? "/", `http://localhost:${HTTP_PORT}`);
     const segments = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
     // GET html/<quad>/index.html
@@ -153,13 +159,14 @@ const handleRequest = async (logQueue: Map<string, Promise<void>>,req: http.Inco
     }
 
     if (req.method === "GET" && route === "html" && rest.length === 1 && rest[0] === "index.html") {
-        respondFile(res, path.join(TARGET_FRAMEWORK, "index.html"));
+        respondFile(res, path.join(getTargetSubdir("framework"), "index.html"));
         return;
     }
 
     if (req.method === "GET" && route === "bundle" && rest.length > 0) {
-        const filePath = path.resolve(TARGET_BUNDLE, quad, ...rest);
-        if (!filePath.startsWith(TARGET_BUNDLE + path.sep)) {
+        const targetBundleDir = getTargetSubdir("bundle");
+        const filePath = path.resolve(targetBundleDir, quad, ...rest);
+        if (!filePath.startsWith(targetBundleDir + path.sep)) {
             respond(res, 400, "text/plain", "invalid path");
             return;
         }
@@ -182,10 +189,13 @@ const handleRequest = async (logQueue: Map<string, Promise<void>>,req: http.Inco
             return;
         }
         const body = await readBody(req);
-        const logPath = path.join(TARGET_TEST, engine, `${quad}.log`);
+        const logPath = path.join(getTargetSubdir("test"), engine, `${quad}.log`);
         const previous = logQueue.get(logPath) ?? Promise.resolve();
         const next = previous.then(() => fs.promises.appendFile(logPath, body + "\n", "utf8"));
-        logQueue.set(logPath, next.catch(() => {}));
+        logQueue.set(
+            logPath,
+            next.catch(() => {}),
+        );
         res.writeHead(204, COMMON_HEADERS);
         res.end();
         return;
@@ -193,7 +203,6 @@ const handleRequest = async (logQueue: Map<string, Promise<void>>,req: http.Inco
 
     respond(res, 404, "text/plain", "not found");
 };
-
 
 const readBody = async (req: http.IncomingMessage): Promise<string> => {
     const chunks: Buffer[] = [];

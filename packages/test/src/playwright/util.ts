@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { PACKAGE_DIR } from "#framework";
+import { getPackageRoot } from "#framework";
 
 /** resolve the playwright cli script from the installed package's bin entry */
 export const getPlaywrightCli = (): string => {
@@ -34,6 +34,5 @@ export const getPlaywrightVersion = (): string => {
 };
 
 const getPlaywrightPackageDir = (): string => {
-    return path.join(PACKAGE_DIR, "node_modules", "@playwright", "test");
+    return path.join(getPackageRoot(), "node_modules", "@playwright", "test");
 };
-

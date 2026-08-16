@@ -1,11 +1,8 @@
-import { beforeAll, describe, it, expect } from "mono-dev/vitest";
+import { describe, it, expect } from "mono-dev/vitest";
 
 import { readLogFile } from "#framework";
 
-
-const LOG_PATHS = [
-    "node/debug-unwind-node-no-modules.log" 
-] as const;
+import { LOG_PATHS } from "./util.ts";
 
 describe.each(LOG_PATHS)("%s", (logPath) => {
     const log = readLogFile(logPath).getTestLog("example_join_handle");
@@ -20,6 +17,4 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
             i++;
         }
     });
-
-
 });
