@@ -1,9 +1,15 @@
-import { BROWSER_ENGINES, NATIVE_ENGINES, PANIC_RUNTIMES, PROFILES } from "#framework";
+import {
+    BROWSER_ENGINES,
+    NATIVE_ENGINES,
+    PANIC_RUNTIMES,
+    PROFILES,
+    type LogEntry,
+} from "#framework";
 
 export const LOG_PATHS: string[] = [];
 for (const profile of PROFILES) {
     for (const panicRuntime of PANIC_RUNTIMES) {
-        for (const target of ["no-modules"]) {
+        for (const target of ["no-modules", "web"]) {
             for (const engine of BROWSER_ENGINES) {
                 LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-browser-${target}.log`);
             }
@@ -13,3 +19,32 @@ for (const profile of PROFILES) {
         }
     }
 }
+
+/**
+ * Get the entries that carry `key` in their payload.
+ *
+ * Note this checks for the key, not for the value - payload values often start
+ * at 0, which is falsy.
+ */
+export const pickEntries = (entries: LogEntry[], key: string): LogEntry[] =>
+    entries.filter((x) => x.payload && key in x.payload);
+
+/** Get the `key` payload value of every entry, in order */
+export const pickValues = (entries: LogEntry[], key: string): number[] =>
+    entries.map((x) => x.payload[key]);
+
+/** Get the only entry whose `key` payload value is `value` */
+export const findEntry = (entries: LogEntry[], key: string, value: number): LogEntry => {
+    const found = entries.filter((x) => x.payload && x.payload[key] === value);
+    if (found.length !== 1) {
+        throw new Error(`expected exactly 1 entry with ${key}=${value}, got ${found.length}`);
+    }
+    return found[0];
+};
+
+/** Get the entries logged by `thread`, in order */
+export const entriesFromThread = (entries: LogEntry[], thread: number): LogEntry[] =>
+    entries.filter((x) => x.thread === thread);
+
+/** Get the timestamp of every entry, in order */
+export const timestampsOf = (entries: LogEntry[]): number[] => entries.map((x) => x.timestamp);

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { getTargetSubdir, measure, type NoModulesWasmBundle } from "#framework";
+import { getTargetSubdir, measure, type WebWasmBundle } from "#framework";
 
 import { setupGlobalHarnessOutputPath } from "./util.ts";
 
@@ -10,16 +10,16 @@ const main = async () => {
     if (!quad) {
         throw new Error("invalid quad, usage: node <driver_script>.ts <quad> <test_filters>...");
     }
-    if (!quad.endsWith("no-modules")) {
-        throw new Error("misconfigured quad, this driver can only run no-modules, got "+quad);
+    if (!quad.endsWith("web")) {
+        throw new Error("misconfigured quad, this driver can only run web, got "+quad);
     }
     const filters = process.argv.slice(3);
     const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", quad + "/example.js");
-    const [wasm_bindgen, wasmModule] = await importNodeNoModulesWasmBundle(quad);
+    const [wasm_bindgen, wasmModule] = await importNodeWebWasmBundle(quad);
     wasm_bindgen.initSync({ module: wasmModule });
     const success = await wasm_bindgen.init_thread_creator(
         "node-fs",
-        "no-modules",
+        "web",
         wasmBindgenJs,
         undefined,
     );
@@ -41,12 +41,14 @@ const main = async () => {
     wasm_bindgen.uninit();
 };
 
-const importNodeNoModulesWasmBundle = async (bundle: string) => {
+const importNodeWebWasmBundle = async (bundle: string) => {
     const targetBundleDir = getTargetSubdir("bundle");
-    const esmImportPath = path.join(targetBundleDir, bundle, "example_esm.js");
-    const { default: wasm_bindgen } = await import(esmImportPath);
+    const esmImportPath = path.join(targetBundleDir, bundle, "example.js");
+    // bun has a bug where imports are not resolved when importing the module as data url
+    // so we will do a workaround to inject it from the importer
+    const wasm_bindgen = await import(esmImportPath);
     const wasm = fs.readFileSync(path.join(targetBundleDir, bundle, "example_bg.wasm"));
-    return [wasm_bindgen as NoModulesWasmBundle, wasm] as const;
+    return [wasm_bindgen as WebWasmBundle, wasm] as const;
 };
 
 void main();

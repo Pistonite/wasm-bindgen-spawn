@@ -24,22 +24,38 @@ __return = (async () => {
         case WBG_TARGET_NO_MODULES: {
             // no-modules target format is let wasm_bindgen = /* ... */;
             // we can inline directly into the worker scripts
-            workerSource = `${bg_js}\n${WORKER_JS}_m(wasm_bindgen)`;
-            dispatcherSource = `${bg_js}\n${DISPATCHER_JS}_m(wasm_bindgen)`;
+            workerSource = `${bg_js}\n${WORKER_JS};_m(wasm_bindgen)`;
+            dispatcherSource = `${bg_js}\n${DISPATCHER_JS};_m(wasm_bindgen)`;
             break;
         }
         case WBG_TARGET_WEB: {
             // web target format is ESM, we need to create a blob url
             // inside the worker (since not all implementation allow accessing
             // blob url created by another worker
-            const bgJsExpr = JSON.stringify(bg_js);
-            const workerInitArgsExpr = `
-(async()=>{
+            let workerInitArgsExpr:string;
+            // @ts-expect-error Window is not in libwebworker
+            if (typeof Window === "function" || typeof WorkerGlobalScope === "function" || typeof Bun === "object") {
+                const bgJsExpr = JSON.stringify(bg_js);
+                workerInitArgsExpr = `(async()=>{
 const bg=URL.createObjectURL(new Blob([${bgJsExpr}], {type:"text/javascript"}));
 try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
 })()`;
-            workerSource = `${WORKER_JS}_m(${workerInitArgsExpr})`;
-            dispatcherSource = `${DISPATCHER_JS}_m(${workerInitArgsExpr})`;
+            } else {
+                // NodeJS does not allow import(<blob_url>) so we will use a data url
+                // note this will not work if the bg_js has relative imports like import foo from "./foo.js";
+                //
+                // note: NodeJS/Deno works with both base64 and chatset=utf-8 data url,
+                // Bun does not work with utf-8, only base64. Additionally Bun as of v1.3.14
+                // cannot handle data urls that are too long. https://github.com/oven-sh/bun/pull/37157
+                //
+                // HOWEVER Bun works with blob url so we will use that for now
+                // @ts-expect-error Buffer global
+                const encoded = Buffer.from(bg_js).toString("base64");
+                const url = `data:text/javascript;base64,${encoded}`;
+                workerInitArgsExpr=`(async()=>{return await import(${JSON.stringify(url)})})()`;
+            }
+            workerSource = `${WORKER_JS};_m(${workerInitArgsExpr})`;
+            dispatcherSource = `${DISPATCHER_JS};_m(${workerInitArgsExpr})`;
             // must use ES worker for the import expression
             useESWorker = true;
             break;

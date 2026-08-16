@@ -8,7 +8,14 @@ declare let __export: unknown;
 // eslint-disable-next-line prefer-const
 __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>) => {
     await __debug("[worker-thread] started");
-    const wasm_bindgen = await wasm_bindgen_module;
+    let wasm_bindgen: WorkerInitArgs;
+    try {
+        wasm_bindgen = await wasm_bindgen_module;
+    } catch(e) {
+        console.error(e);
+        throw e;
+    }
+    await __debug("[worker-thread] module loaded");
     const self_ = await getWorkerGlobalScope();
     self_.listen(async (e) => {
         await __debug("[worker-thread] received init payload");

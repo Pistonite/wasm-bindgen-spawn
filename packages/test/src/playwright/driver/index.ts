@@ -21,6 +21,10 @@ const main = async () => {
             ?.split(",")
             ?.map((x) => x.trim()) || [];
 
+    const harnessInjectionScript = "\n;globalThis.__harness_fetch_endpoint=" +
+                JSON.stringify(location.origin + "/harness/" + quad) +
+                ";\n";
+
     switch (target) {
         case "no-modules": {
             const scriptPath = location.origin + `/bundle/${quad}/example.js`;
@@ -29,17 +33,39 @@ const main = async () => {
             const wasmBytes = await (await fetch(wasmPath)).arrayBuffer();
             const workerPath = location.origin + `/bundle/${quad}/worker.js`;
             const workerScript = await (await fetch(workerPath)).text();
-            const bindgenScript =
-                script +
-                "\n;globalThis.__harness_fetch_endpoint=" +
-                JSON.stringify(location.origin + "/harness/" + quad) +
-                ";\n";
+            const bindgenScript = script + harnessInjectionScript;
             const combinedScript = bindgenScript + workerScript;
             const url = URL.createObjectURL(
                 new Blob([combinedScript], { type: "text/javascript" }),
             );
 
             const worker = new Worker(url);
+            worker.onmessage = (e) => {
+                const d = e.data;
+                setOutput(d);
+                if (d === "started") {
+                    worker.postMessage({ testFilters, wasmBytes, bindgenScript });
+                }
+                if (d === "done") {
+                    worker.terminate();
+                    URL.revokeObjectURL(url);
+                }
+            };
+            break;
+        }
+        case "web": {
+            const scriptPath = location.origin + `/bundle/${quad}/example.js`;
+            const script = await (await fetch(scriptPath)).text();
+            const wasmPath = location.origin + `/bundle/${quad}/example_bg.wasm`;
+            const wasmBytes = await (await fetch(wasmPath)).arrayBuffer();
+            const workerPath = location.origin + `/bundle/${quad}/worker.js`;
+            const workerScript = await (await fetch(workerPath)).text();
+            const bindgenScript = script + harnessInjectionScript;
+            const url = URL.createObjectURL(
+                new Blob([workerScript], { type: "text/javascript" }),
+            );
+
+            const worker = new Worker(url, {type:"module"});
             worker.onmessage = (e) => {
                 const d = e.data;
                 setOutput(d);

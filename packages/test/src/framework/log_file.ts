@@ -1,20 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { getTargetSubdir } from "./util.ts";
+import { getTargetSubdir, type Engine } from "./util.ts";
 
 export const readLogFile = (engineLogName: string): LogFile => {
     const [engine, logName] = engineLogName.split("/", 2);
-    return new LogFile(engine, logName);
+    return new LogFile(engine as Engine, logName);
 };
 
 export class LogFile {
     /** the engine used to execute the test */
-    public engine: string;
+    public engine: Engine;
     /** the panic runtime used in the test */
     public panicRuntime: "abort" | "unwind";
     public testLogMap: Record<string, TestLog> = {};
-    constructor(engine: string, logName: string) {
+    public logName: string;
+    constructor(engine: Engine, logName: string) {
+        this.logName = logName;
         this.engine = engine;
         const logPath = path.join(getTargetSubdir("test"), engine, logName);
         const [_profile, panicRuntime, _host, _] = logName.split("-", 4);
@@ -68,7 +70,7 @@ export class LogFile {
         }
         for (const [startTimestamp, startIndex, endIndex, name] of tests) {
             if (endIndex === -1) {
-                throw new Error("incomplete log file: test " + name + " does not have an end");
+                throw new Error("incomplete log file: test " + name + " does not have an end" + `(in log ${logName}, engine ${engine}) - ${JSON.stringify(tests,undefined,2)}`);
             }
             let endTimestamp = -1;
             const processedEntries: LogEntry[] = [];
@@ -95,7 +97,7 @@ export class LogFile {
     public getTestLog(testName: string): TestLog {
         const testLog = this.testLogMap[testName];
         if (!testLog) {
-            throw new Error("test log not found for name: " + testName);
+            throw new Error("test log not found for name: " + testName + ` (in log ${this.logName}, engine ${this.engine})`);
         }
         return testLog;
     }

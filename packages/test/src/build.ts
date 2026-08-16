@@ -29,7 +29,7 @@ const main = async () => {
         }
     }
     const output: WasmPackOutput[] = [];
-    for (const target of ["no-modules", "web"] as const) {
+    for (const target of ["no-modules", "web", "nodejs"] as const) {
         const promises = await Promise.allSettled([
             runWasmPack("unwind", "debug", target),
             runWasmPack("unwind", "release", target),
@@ -185,12 +185,11 @@ const runPostBuild = (panicRuntime: PanicRuntime, profile: Profile, target: Targ
     if (fs.existsSync(outDir)) {
         fs.rmSync(outDir, { recursive: true, force: true });
     }
-    fs.mkdirSync(outDir, { recursive: true });
-    console.log(`generating host bundle for ${quad}`);
 
-    fs.copyFileSync(path.join(wasmPackOutDir, "example.d.ts"), path.join(outDir, "example.d.ts"));
     switch (target) {
         case "no-modules": {
+            fs.mkdirSync(outDir, { recursive: true });
+            console.log(`generating host bundle for ${quad}`);
             if (host === "node") {
                 const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
                 fs.writeFileSync(
@@ -218,22 +217,50 @@ const runPostBuild = (panicRuntime: PanicRuntime, profile: Profile, target: Targ
             break;
         }
         case "web": {
+            fs.mkdirSync(outDir, { recursive: true });
+            console.log(`generating host bundle for ${quad}`);
             if (host === "node") {
                 const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
-                fs.writeFileSync(path.join(outDir, "example.js"), `import fs from "fs";\n${js}`);
+                fs.writeFileSync(path.join(outDir, "example.js"), `import fs from "node:fs";globalThis.__fs=fs;\n${js}`);
             } else {
                 fs.copyFileSync(
                     path.join(wasmPackOutDir, "example.js"),
                     path.join(outDir, "example.js"),
                 );
+                fs.copyFileSync(
+                    path.join(frameworkOutDir, "worker_web.js"),
+                    path.join(outDir, "worker.js"),
+                );
             }
             break;
+        }
+        case "nodejs": {
+            if (host === "browser") {
+                return;
+            }
+            fs.mkdirSync(outDir, { recursive: true });
+            console.log(`generating host bundle for ${quad}`);
+            const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
+            // wasm-bindgen emits common JS for nodejs target so the extension must be .cjs
+            fs.writeFileSync(
+                path.join(outDir, "example.cjs"),
+                `globalThis.__fs=require("fs");\n${js}`,
+            );
+            const webJs = fs.readFileSync(
+                path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`, "example.js"),
+                "utf8"
+            );
+            fs.writeFileSync(
+                path.join(outDir, "example_web.js"),
+                `import fs from "node:fs";globalThis.__fs=fs;\n${webJs}`
+            );
         }
     }
     fs.copyFileSync(
         path.join(wasmPackOutDir, "example_bg.wasm"),
         path.join(outDir, "example_bg.wasm"),
     );
+    fs.copyFileSync(path.join(wasmPackOutDir, "example.d.ts"), path.join(outDir, "example.d.ts"));
 };
 
 const runFrameworkBuild = () => {
@@ -253,6 +280,12 @@ const runFrameworkBuild = () => {
     );
     child_process.execSync(
         `bun build ${path.join(sourceDir, "worker_no_modules.ts")} --outdir=${outDir}`,
+        {
+            stdio: "inherit",
+        },
+    );
+    child_process.execSync(
+        `bun build ${path.join(sourceDir, "worker_web.ts")} --outdir=${outDir}`,
         {
             stdio: "inherit",
         },

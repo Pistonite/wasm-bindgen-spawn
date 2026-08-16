@@ -64,6 +64,10 @@ const runTestForQuad = async (
     quad: string,
     testFilters: string[],
 ): Promise<boolean> => {
+    if (engine === "deno" && quad.endsWith("-nodejs")) {
+        // skip nodejs tests in unsupported engines
+        return true;
+    }
     const script = getDriverScript(quad);
     const [command, ...args] = getEngineCommand(engine, script, quad, testFilters);
     const prefix = `[${engine}/${quad}] `;

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { getTargetSubdir, measure, type NoModulesWasmBundle } from "#framework";
+import { getTargetSubdir, measure, type NodeWasmBundle } from "#framework";
 
 import { setupGlobalHarnessOutputPath } from "./util.ts";
 
@@ -10,16 +10,17 @@ const main = async () => {
     if (!quad) {
         throw new Error("invalid quad, usage: node <driver_script>.ts <quad> <test_filters>...");
     }
-    if (!quad.endsWith("no-modules")) {
-        throw new Error("misconfigured quad, this driver can only run no-modules, got "+quad);
+    if (!quad.endsWith("nodejs")) {
+        throw new Error("misconfigured quad, this driver can only run nodejs, got "+quad);
     }
     const filters = process.argv.slice(3);
-    const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", quad + "/example.js");
-    const [wasm_bindgen, wasmModule] = await importNodeNoModulesWasmBundle(quad);
-    wasm_bindgen.initSync({ module: wasmModule });
+    // use the web target for initialization of worker threads 
+    const bindgenJsQuad = quad.replace(/-nodejs$/, "-web");
+    const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", bindgenJsQuad + "/example.js");
+    const [wasm_bindgen ] = await importNodeWasmBundle(quad);
     const success = await wasm_bindgen.init_thread_creator(
         "node-fs",
-        "no-modules",
+        "web",
         wasmBindgenJs,
         undefined,
     );
@@ -41,12 +42,12 @@ const main = async () => {
     wasm_bindgen.uninit();
 };
 
-const importNodeNoModulesWasmBundle = async (bundle: string) => {
+const importNodeWasmBundle = async (bundle: string) => {
     const targetBundleDir = getTargetSubdir("bundle");
-    const esmImportPath = path.join(targetBundleDir, bundle, "example_esm.js");
-    const { default: wasm_bindgen } = await import(esmImportPath);
-    const wasm = fs.readFileSync(path.join(targetBundleDir, bundle, "example_bg.wasm"));
-    return [wasm_bindgen as NoModulesWasmBundle, wasm] as const;
+    const esmImportPath = path.join(targetBundleDir, bundle, "example.cjs");
+    const wasm_bindgen = await import(esmImportPath) as NodeWasmBundle;
+    // nodejs bundle auto initializes the wasm module on the main thread
+    return [wasm_bindgen] as const;
 };
 
 void main();

@@ -5,7 +5,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 import {
-    BROWSER_ENGINES,
     getEngineNameFromUserAgent,
     getPackageRoot,
     getTargetSubdir,
@@ -44,13 +43,6 @@ export const stopHttpServer = async () => {
 };
 
 export const startHttpServer = async (useHttps: boolean): Promise<void> => {
-    // clean the browser test outputs
-    for (const engine of BROWSER_ENGINES) {
-        const dir = path.join(getTargetSubdir("test"), engine);
-        fs.rmSync(dir, { recursive: true, force: true });
-        fs.mkdirSync(dir, { recursive: true });
-    }
-
     // using a queue to prevent partial writes to logs
     const logQueue = new Map<string, Promise<void>>();
 

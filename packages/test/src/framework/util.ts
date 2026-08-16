@@ -3,6 +3,12 @@ import path from "node:path";
 export type NoModulesWasmBundle =
     // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     typeof import("../../target/bundle/debug-unwind-node-no-modules/example_esm.js");
+export type WebWasmBundle =
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    typeof import("../../target/bundle/debug-unwind-node-web/example.js");
+export type NodeWasmBundle =
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    typeof import("../../target/bundle/debug-unwind-node-nodejs/example.js");
 
 export const PROFILES = ["debug", "release"] as const;
 export type Profile = (typeof PROFILES)[number];
@@ -35,8 +41,11 @@ export const getTargetTestQuads = (filters: string[], host: Host): string[] => {
     const quads: string[] = [];
     for (const profile of PROFILES) {
         for (const panicRuntime of PANIC_RUNTIMES) {
-            for (const target of ["no-modules"]) {
+            for (const target of ["no-modules", "web", "nodejs"]) {
                 const triple = `${profile}-${panicRuntime}-${target}`;
+                if (target === "nodejs" && host === "browser") {
+                    continue;
+                }
                 if (shouldRun(triple)) {
                     const quad = `${profile}-${panicRuntime}-${host}-${target}`;
                     quads.push(quad);
