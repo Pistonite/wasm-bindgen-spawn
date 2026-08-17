@@ -1,0 +1,34 @@
+Won't all be covered when we release the rewrite
+
+std
+  sync
+    atomic - works
+    Mutex - works (+poison)
+    RwLock - should work, similar to Mutex so no test
+    Arc - works (tested with atomic)
+    mpsc - works
+  thread
+    spawn - no (use this crate)
+    available_parallelism - not supported
+    current()/Thread - yes as we do current().id() when logging
+    park/unpark - need test (should work? depends on if std has implementation)
+    sleep - works
+    panicking - need test
+    scope - no
+    JoinHandle - no (use this crate)
+    LocalKey/thread_local! - yes
+
+old tests:
+  - a lot of threads atomic usize
+  - pooled atomic usize
+  - mutex interlace
+  - mutex poison
+
+new tests:
+  - spawn async and try to do something truly async
+
+  below will probably not be covered in initial release, since they weren't
+  in the old version
+
+  - park/unpack
+  - thread::panicking

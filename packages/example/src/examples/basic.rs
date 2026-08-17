@@ -6,6 +6,19 @@ use crate::harness;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
+pub fn example_available_parallelism() {
+    harness::log("test-start", "example_available_parallelism");
+    let log_context = "test-log:example_available_parallelism";
+    // -------- in the example you may ignore the harness calls; they are for tests only
+
+    // not supported - use navigator.hardwareConcurrency
+    // https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency
+    let x = thread::available_parallelism().is_err();
+    harness::log(log_context, &format!("{{\"available_parallelism\":{x}}}"));
+    harness::log("test-end", "example_available_parallelism");
+}
+
+#[wasm_bindgen]
 pub fn example_join_handle() {
     harness::log("test-start", "example_join_handle");
     let log_context = "test-log:example_join_handle";
