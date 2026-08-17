@@ -4,11 +4,7 @@ import https from "node:https";
 import fs from "node:fs";
 import path from "node:path";
 
-import {
-    getEngineNameFromUserAgent,
-    getPackageRoot,
-    getTargetSubdir,
-} from "#framework";
+import { getEngineNameFromUserAgent, getPackageRoot, getTargetSubdir } from "#framework";
 
 // port for the HTTP server that the browser automation navigates to
 const HTTP_PORT = 3001;

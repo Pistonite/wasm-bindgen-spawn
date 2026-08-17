@@ -9,7 +9,7 @@ import {
 export const LOG_PATHS: string[] = [];
 for (const profile of PROFILES) {
     for (const panicRuntime of PANIC_RUNTIMES) {
-        for (const target of ["no-modules", "web"]) {
+        for (const target of ["no-modules", "web", "vite"]) {
             for (const engine of BROWSER_ENGINES) {
                 LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-browser-${target}.log`);
             }

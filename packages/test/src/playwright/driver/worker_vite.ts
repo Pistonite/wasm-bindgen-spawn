@@ -10,7 +10,7 @@ self.onmessage = async (e) => {
         "fetch",
         "web",
         bindgenScript,
-        undefined,
+        wasmBytes,
     );
     if (!success) {
         self.postMessage("error: failed to init thread creator in WASM");

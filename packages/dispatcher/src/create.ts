@@ -32,9 +32,14 @@ __return = (async () => {
             // web target format is ESM, we need to create a blob url
             // inside the worker (since not all implementation allow accessing
             // blob url created by another worker
-            let workerInitArgsExpr:string;
-            // @ts-expect-error Window is not in libwebworker
-            if (typeof Window === "function" || typeof WorkerGlobalScope === "function" || typeof Bun === "object") {
+            let workerInitArgsExpr: string;
+            if (
+                // @ts-expect-error Window is not in libwebworker
+                typeof Window === "function" ||
+                typeof WorkerGlobalScope === "function" ||
+                // @ts-expect-error Window is not in libwebworker
+                typeof Bun === "object"
+            ) {
                 const bgJsExpr = JSON.stringify(bg_js);
                 workerInitArgsExpr = `(async()=>{
 const bg=URL.createObjectURL(new Blob([${bgJsExpr}], {type:"text/javascript"}));
@@ -52,7 +57,7 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
                 // @ts-expect-error Buffer global
                 const encoded = Buffer.from(bg_js).toString("base64");
                 const url = `data:text/javascript;base64,${encoded}`;
-                workerInitArgsExpr=`(async()=>{return await import(${JSON.stringify(url)})})()`;
+                workerInitArgsExpr = `(async()=>{return await import(${JSON.stringify(url)})})()`;
             }
             workerSource = `${WORKER_JS};_m(${workerInitArgsExpr})`;
             dispatcherSource = `${DISPATCHER_JS};_m(${workerInitArgsExpr})`;

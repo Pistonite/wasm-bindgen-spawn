@@ -11,7 +11,7 @@ __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>)
     let wasm_bindgen: WorkerInitArgs;
     try {
         wasm_bindgen = await wasm_bindgen_module;
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         throw e;
     }

@@ -10,13 +10,12 @@ const main = async () => {
         throw new Error("invalid quad, usage: node <driver_script>.ts <quad> <test_filters>...");
     }
     if (!quad.endsWith("nodejs")) {
-        throw new Error("misconfigured quad, this driver can only run nodejs, got "+quad);
+        throw new Error("misconfigured quad, this driver can only run nodejs, got " + quad);
     }
     const filters = process.argv.slice(3);
-    // use the web target for initialization of worker threads 
-    const bindgenJsQuad = quad.replace(/-nodejs$/, "-web");
-    const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", bindgenJsQuad + "/example.js");
-    const [wasm_bindgen ] = await importNodeWasmBundle(quad);
+    // use the web target for initialization of worker threads
+    const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", quad + "/example_web.js");
+    const [wasm_bindgen] = await importNodeWasmBundle(quad);
     const success = await wasm_bindgen.init_thread_creator(
         "node-fs",
         "web",
@@ -44,7 +43,7 @@ const main = async () => {
 const importNodeWasmBundle = async (bundle: string) => {
     const targetBundleDir = getTargetSubdir("bundle");
     const esmImportPath = path.join(targetBundleDir, bundle, "example.cjs");
-    const wasm_bindgen = await import(esmImportPath) as NodeWasmBundle;
+    const wasm_bindgen = (await import(esmImportPath)) as NodeWasmBundle;
     // nodejs bundle auto initializes the wasm module on the main thread
     return [wasm_bindgen] as const;
 };

@@ -13,6 +13,7 @@ tasks:
   fix:
     - task: cargo:fmt-fix
   dev-doc:
+    - task: dispatcher:build
     - task: cargo:watch-serve-doc
 
 

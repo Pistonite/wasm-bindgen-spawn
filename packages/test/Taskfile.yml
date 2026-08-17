@@ -25,6 +25,8 @@ tasks:
       - node src/build.ts
 
   check:
+    - task: dispatcher:build
+    - node src/build.ts --minimum
     - task: ecma:check
   fix:
     - task: ecma:fix

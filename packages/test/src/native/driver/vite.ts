@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { getTargetSubdir, measure, type DenoWasmBundle } from "#framework";
+import { getTargetSubdir, measure, type ViteWasmBundle } from "#framework";
 
 import { setupGlobalHarnessOutputPath } from "./util.ts";
 
@@ -10,19 +10,15 @@ const main = async () => {
     if (!quad) {
         throw new Error("invalid quad, usage: node <driver_script>.ts <quad> <test_filters>...");
     }
-    if (!quad.endsWith("deno")) {
-        throw new Error("misconfigured quad, this driver can only run deno, got " + quad);
+    if (!quad.endsWith("vite")) {
+        throw new Error("misconfigured quad, this driver can only run vite, got " + quad);
     }
     const filters = process.argv.slice(3);
     // use the web target for initialization of worker threads
     const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", quad + "/example_web.js");
-    const [wasm_bindgen, wasmModule] = await importDenoWasmBundle(quad);
-    const success = await wasm_bindgen.init_thread_creator(
-        "node-fs",
-        "web",
-        wasmBindgenJs,
-        wasmModule,
-    );
+    const [wasm_bindgen, wasm] = await importBundlerWasmBundle(quad);
+
+    const success = await wasm_bindgen.init_thread_creator("node-fs", "web", wasmBindgenJs, wasm);
     if (!success) {
         throw new Error("Failed to init thread creator in WASM!");
     }
@@ -41,14 +37,14 @@ const main = async () => {
     wasm_bindgen.uninit();
 };
 
-const importDenoWasmBundle = async (bundle: string) => {
+const importBundlerWasmBundle = async (bundle: string) => {
     const targetBundleDir = getTargetSubdir("bundle");
     const esmImportPath = path.join(targetBundleDir, bundle, "example.js");
-    const wasm_bindgen = (await import(esmImportPath)) as DenoWasmBundle;
-    // deno bundle auto initializes the wasm module
-    // however the wasm_bindgen::module() is not available and we need to pass that in
-    // to the thread creator
-    const wasm = fs.readFileSync(path.join(targetBundleDir, bundle, "example_bg.wasm"));
+    const wasm_bindgen = (await import(esmImportPath)) as ViteWasmBundle;
+    // the bundler would have to already initialize the wasm instance
+    // the wasm_bindgen::module() is not available in bundler target
+    // so we read the wasm copy again
+    const wasm = fs.readFileSync(path.join(getTargetSubdir("bundle"), bundle, "example_bg.wasm"));
     return [wasm_bindgen, wasm] as const;
 };
 

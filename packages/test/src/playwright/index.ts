@@ -2,7 +2,13 @@ import child_process from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { BROWSER_ENGINES, type BrowserEngine, getPackageRoot, getTargetSubdir, getTargetTestQuads } from "#framework";
+import {
+    BROWSER_ENGINES,
+    type BrowserEngine,
+    getPackageRoot,
+    getTargetSubdir,
+    getTargetTestQuads,
+} from "#framework";
 
 import { startHttpServer, stopHttpServer } from "./http_server.ts";
 import {
@@ -46,7 +52,7 @@ const main = async () => {
         // ensure things are stabilized
         await new Promise((r) => setTimeout(r, 1000));
 
-        const engines: BrowserEngine[] = []
+        const engines: BrowserEngine[] = [];
         const quadsFilter: string[] = [];
         const testFilters: string[] = [];
         outer: for (const arg of process.argv.slice(2)) {
@@ -64,7 +70,7 @@ const main = async () => {
         }
 
         // clean the browser test outputs
-        for (const engine of (engines.length ? engines : BROWSER_ENGINES)) {
+        for (const engine of engines.length ? engines : BROWSER_ENGINES) {
             const dir = path.join(getTargetSubdir("test"), engine);
             fs.mkdirSync(dir, { recursive: true });
             const quads = getTargetTestQuads(quadsFilter, "browser");
@@ -72,7 +78,6 @@ const main = async () => {
                 fs.rmSync(path.join(dir, quad + ".log"), { force: true });
             }
         }
-
 
         if (!httpOnly) {
             let code: number;
@@ -97,7 +102,11 @@ const main = async () => {
     }
 };
 
-const runPlaywright = async (engines: BrowserEngine[], quadsFilter: string[], testFilters: string[]): Promise<number> => {
+const runPlaywright = async (
+    engines: BrowserEngine[],
+    quadsFilter: string[],
+    testFilters: string[],
+): Promise<number> => {
     const cli = getPlaywrightCli();
     console.log("launching playwright");
     const engineFlags = engines.map((e) => `--project=${e}`);

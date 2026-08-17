@@ -11,7 +11,7 @@ const main = async () => {
         throw new Error("invalid quad, usage: node <driver_script>.ts <quad> <test_filters>...");
     }
     if (!quad.endsWith("web")) {
-        throw new Error("misconfigured quad, this driver can only run web, got "+quad);
+        throw new Error("misconfigured quad, this driver can only run web, got " + quad);
     }
     const filters = process.argv.slice(3);
     const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", quad + "/example.js");
