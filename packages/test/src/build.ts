@@ -12,6 +12,7 @@ import {
     type Profile,
     PROFILES,
     type Target,
+    TARGETS,
 } from "#framework";
 
 const main = async () => {
@@ -29,7 +30,7 @@ const main = async () => {
         }
     }
     const output: WasmPackOutput[] = [];
-    for (const target of ["no-modules", "web", "nodejs"] as const) {
+    for (const target of TARGETS) {
         const promises = await Promise.allSettled([
             runWasmPack("unwind", "debug", target),
             runWasmPack("unwind", "release", target),
@@ -254,13 +255,57 @@ const runPostBuild = (panicRuntime: PanicRuntime, profile: Profile, target: Targ
                 path.join(outDir, "example_web.js"),
                 `import fs from "node:fs";globalThis.__fs=fs;\n${webJs}`
             );
+            break;
         }
+        case "deno": {
+            if (host === "browser") {
+                return;
+            }
+            fs.mkdirSync(outDir, { recursive: true });
+            console.log(`generating host bundle for ${quad}`);
+            const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
+            fs.writeFileSync(
+                path.join(outDir, "example.js"),
+                `import fs from "node:fs";globalThis.__fs=fs;\n${js}`,
+            );
+            const webJs = fs.readFileSync(
+                path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`, "example.js"),
+                "utf8"
+            );
+            fs.writeFileSync(
+                path.join(outDir, "example_web.js"),
+                `import fs from "node:fs";globalThis.__fs=fs;\n${webJs}`
+            );
+            break;
+        }
+        case "bundler": {
+            fs.mkdirSync(outDir, { recursive: true });
+            console.log(`generating host bundle for ${quad}`);
+            fs.copyFileSync(path.join(wasmPackOutDir, "example_bg.js"), path.join(outDir, "example_bg.js"));
+            if (host === "node") {
+                const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
+                fs.writeFileSync(path.join(outDir, "example.js"), `import fs from "node:fs";globalThis.__fs=fs;\n${js}`);
+            } else {
+                fs.copyFileSync(
+                    path.join(wasmPackOutDir, "example.js"),
+                    path.join(outDir, "example.js"),
+                );
+                // fs.copyFileSync(
+                //     path.join(frameworkOutDir, "worker_web.js"),
+                //     path.join(outDir, "worker.js"),
+                // );
+            }
+        }
+
     }
     fs.copyFileSync(
         path.join(wasmPackOutDir, "example_bg.wasm"),
         path.join(outDir, "example_bg.wasm"),
     );
     fs.copyFileSync(path.join(wasmPackOutDir, "example.d.ts"), path.join(outDir, "example.d.ts"));
+
+    
+
 };
 
 const runFrameworkBuild = () => {

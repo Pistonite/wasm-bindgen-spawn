@@ -1,6 +1,7 @@
+import fs from "node:fs";
 import path from "node:path";
 
-import { getTargetSubdir, measure, type NodeWasmBundle } from "#framework";
+import { getTargetSubdir, measure, type DenoWasmBundle } from "#framework";
 
 import { setupGlobalHarnessOutputPath } from "./util.ts";
 
@@ -9,19 +10,19 @@ const main = async () => {
     if (!quad) {
         throw new Error("invalid quad, usage: node <driver_script>.ts <quad> <test_filters>...");
     }
-    if (!quad.endsWith("nodejs")) {
-        throw new Error("misconfigured quad, this driver can only run nodejs, got "+quad);
+    if (!quad.endsWith("deno")) {
+        throw new Error("misconfigured quad, this driver can only run deno, got "+quad);
     }
     const filters = process.argv.slice(3);
     // use the web target for initialization of worker threads 
-    const bindgenJsQuad = quad.replace(/-nodejs$/, "-web");
+    const bindgenJsQuad = quad.replace(/-deno$/, "-web");
     const wasmBindgenJs = setupGlobalHarnessOutputPath(quad + ".log", bindgenJsQuad + "/example.js");
-    const [wasm_bindgen ] = await importNodeWasmBundle(quad);
+    const [wasm_bindgen, wasmModule ] = await importDenoWasmBundle(quad);
     const success = await wasm_bindgen.init_thread_creator(
         "node-fs",
         "web",
         wasmBindgenJs,
-        undefined,
+        wasmModule,
     );
     if (!success) {
         throw new Error("Failed to init thread creator in WASM!");
@@ -41,12 +42,15 @@ const main = async () => {
     wasm_bindgen.uninit();
 };
 
-const importNodeWasmBundle = async (bundle: string) => {
+const importDenoWasmBundle = async (bundle: string) => {
     const targetBundleDir = getTargetSubdir("bundle");
-    const esmImportPath = path.join(targetBundleDir, bundle, "example.cjs");
-    const wasm_bindgen = await import(esmImportPath) as NodeWasmBundle;
-    // nodejs bundle auto initializes the wasm module on the main thread
-    return [wasm_bindgen] as const;
+    const esmImportPath = path.join(targetBundleDir, bundle, "example.js");
+    const wasm_bindgen = await import(esmImportPath) as DenoWasmBundle;
+    // deno bundle auto initializes the wasm module
+    // however the wasm_bindgen::module() is not available and we need to pass that in
+    // to the thread creator
+    const wasm = fs.readFileSync(path.join(targetBundleDir, bundle, "example_bg.wasm"));
+    return [wasm_bindgen, wasm] as const;
 };
 
 void main();

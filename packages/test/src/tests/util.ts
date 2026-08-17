@@ -17,6 +17,14 @@ for (const profile of PROFILES) {
                 LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-node-${target}.log`);
             }
         }
+        // nodejs target
+        for (const engine of ["node", "bun"]) {
+            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-node-nodejs.log`);
+        }
+        // deno target
+        for (const engine of ["bun", "deno"]) {
+            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-node-deno.log`);
+        }
     }
 }
 

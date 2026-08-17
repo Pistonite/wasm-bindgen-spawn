@@ -9,6 +9,9 @@ export type WebWasmBundle =
 export type NodeWasmBundle =
     // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     typeof import("../../target/bundle/debug-unwind-node-nodejs/example.js");
+export type DenoWasmBundle =
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    typeof import("../../target/bundle/debug-unwind-node-deno/example.js");
 
 export const PROFILES = ["debug", "release"] as const;
 export type Profile = (typeof PROFILES)[number];
@@ -41,9 +44,9 @@ export const getTargetTestQuads = (filters: string[], host: Host): string[] => {
     const quads: string[] = [];
     for (const profile of PROFILES) {
         for (const panicRuntime of PANIC_RUNTIMES) {
-            for (const target of ["no-modules", "web", "nodejs"]) {
+            for (const target of ["no-modules", "web", "nodejs", "deno"]) {
                 const triple = `${profile}-${panicRuntime}-${target}`;
-                if (target === "nodejs" && host === "browser") {
+                if ((target === "nodejs" || target === "deno") && host === "browser") {
                     continue;
                 }
                 if (shouldRun(triple)) {
