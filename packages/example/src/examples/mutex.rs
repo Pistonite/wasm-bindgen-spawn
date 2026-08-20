@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, TryLockError};
 
 use wasm_bindgen::prelude::*;
 
@@ -50,4 +50,46 @@ pub fn example_mutex() {
 
     // -------- in the example you may ignore the harness calls; they are for tests only
     harness::log("test-end", "example_mutex");
+}
+
+/// Panic while holding a lock should produce a poison error
+#[wasm_bindgen]
+pub fn example_mutex_poison() {
+    harness::log("test-start", "example_mutex_poison");
+    let log_context = "test-log:example_mutex_poison";
+    // -------- in the example you may ignore the harness calls; they are for tests only
+
+    let v = Arc::new(Mutex::new(Vec::<i32>::new()));
+    let handle = {
+        let v = v.clone();
+        wasm_bindgen_spawn::spawn(move || {
+            let mut v = v.lock().unwrap();
+            v.push(1);
+            panic!("This is a test panic");
+        })
+    };
+    #[allow(irrefutable_let_patterns)] // ??? how does compiler know the if will always match
+    if let Err(e) = handle.join() {
+        let info = harness::panic_info(&e);
+        harness::log(log_context, &format!("{{\"join_error\":{info:?}}}"));
+    }
+
+    match v.try_lock() {
+        Ok(_) => {
+            // this should not happen
+            harness::log(log_context, "{\"try_lock\":\"ok\"}");
+        }
+        Err(TryLockError::WouldBlock) => {
+            // this will happen if panic=abort, since poison detection happens
+            // when the mutex guard is dropped
+            harness::log(log_context, "{\"try_lock\":\"would_block\"}");
+        }
+        Err(TryLockError::Poisoned(_)) => {
+            // this will happen if panic=unwind
+            harness::log(log_context, "{\"try_lock\":\"poisoned\"}");
+        }
+    }
+
+    // -------- in the example you may ignore the harness calls; they are for tests only
+    harness::log("test-end", "example_mutex_poison");
 }

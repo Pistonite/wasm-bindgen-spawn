@@ -33,55 +33,84 @@ const MIN_HANDOFFS = 50;
 
 describe.each(LOG_PATHS)("%s", (logPath) => {
     const run = readLogFile(logPath);
-    const log = run.getTestLog("example_mutex");
+    describe("example_mutex", () => {
+        const log = run.getTestLog("example_mutex");
 
-    const length = only(log.entries, "vec_length").payload?.vec_length as number;
-    const pos = only(log.entries, "interleave_pos").payload?.interleave_pos as number;
-    const sample = only(log.entries, "interleave_sample").payload?.interleave_sample as number[];
+        const length = only(log.entries, "vec_length").payload?.vec_length as number;
+        const pos = only(log.entries, "interleave_pos").payload?.interleave_pos as number;
+        const sample = only(log.entries, "interleave_sample").payload
+            ?.interleave_sample as number[];
 
-    it("logged correct length", () => {
-        expect(length).toBe(THREADS * COUNT);
-    });
+        it("logged correct length", () => {
+            expect(length).toBe(THREADS * COUNT);
+        });
 
-    it("logged the result from the main thread after joining", () => {
-        for (const key of ["vec_length", "interleave_pos", "interleave_sample"]) {
-            expect(only(log.entries, key).isMainThread()).toBe(true);
-        }
-    });
-
-    it("detected interleaving section", () => {
-        expect(sample.length).toBe(SAMPLE_SIZE);
-        // only the two thread indices ever get pushed
-        expect(new Set(sample).size).toBeLessThanOrEqual(THREADS);
-        for (const x of sample) {
-            expect(x).toBeGreaterThanOrEqual(0);
-            expect(x).toBeLessThan(THREADS);
-        }
-        // the sample starts at the first `1`, by definition
-        expect(sample[0]).toBe(1);
-        // the position of the first 1 should be less than the number of each index
-        expect(pos).toBeLessThan(COUNT);
-    });
-
-    it("both threads made progress at the same rate", () => {
-        for (let i = 0; i < THREADS; i++) {
-            expect(sample.filter((x) => x === i).length).toBeGreaterThanOrEqual(
-                MIN_SHARE_OF_SAMPLE,
-            );
-        }
-    });
-
-    it("passed the lock back and forth rather than in batches", () => {
-        let handoffs = 0;
-        for (let i = 1; i < sample.length; i++) {
-            if (sample[i] !== sample[i - 1]) {
-                handoffs++;
+        it("logged the result from the main thread after joining", () => {
+            for (const key of ["vec_length", "interleave_pos", "interleave_sample"]) {
+                expect(only(log.entries, key).isMainThread()).toBe(true);
             }
-        }
-        expect(handoffs).toBeGreaterThanOrEqual(MIN_HANDOFFS);
-    });
+        });
 
-    it("did not panic", () => {
-        expect(log.entries.filter((x) => x.panic).length).toBe(0);
+        it("detected interleaving section", () => {
+            expect(sample.length).toBe(SAMPLE_SIZE);
+            // only the two thread indices ever get pushed
+            expect(new Set(sample).size).toBeLessThanOrEqual(THREADS);
+            for (const x of sample) {
+                expect(x).toBeGreaterThanOrEqual(0);
+                expect(x).toBeLessThan(THREADS);
+            }
+            // the sample starts at the first `1`, by definition
+            expect(sample[0]).toBe(1);
+            // the position of the first 1 should be less than the number of each index
+            expect(pos).toBeLessThan(COUNT);
+        });
+
+        it("both threads made progress at the same rate", () => {
+            for (let i = 0; i < THREADS; i++) {
+                expect(sample.filter((x) => x === i).length).toBeGreaterThanOrEqual(
+                    MIN_SHARE_OF_SAMPLE,
+                );
+            }
+        });
+
+        it("passed the lock back and forth rather than in batches", () => {
+            let handoffs = 0;
+            for (let i = 1; i < sample.length; i++) {
+                if (sample[i] !== sample[i - 1]) {
+                    handoffs++;
+                }
+            }
+            expect(handoffs).toBeGreaterThanOrEqual(MIN_HANDOFFS);
+        });
+
+        it("did not panic", () => {
+            expect(log.entries.filter((x) => x.panic).length).toBe(0);
+        });
+    });
+    describe("example_mutex_poison", () => {
+        const log = run.getTestLog("example_mutex_poison");
+        it("logged join error", () => {
+            const joinError = only(log.entries, "join_error").payload?.join_error;
+            if (run.panicRuntime === "abort") {
+                expect(joinError).toMatch(/panicked or aborted!/);
+            } else {
+                expect(joinError).toBe("This is a test panic");
+            }
+        });
+        it("logged a panic", () => {
+            const panics = log.entries.filter((x) => x.panic);
+            expect(panics.length).toBe(1);
+            const e = panics[0];
+            expect(e.panic?.message).toBe("This is a test panic");
+            expect(e.panic?.file).toBe("/example/src/examples/mutex.rs");
+        });
+        it("observed the panic from the mutex", () => {
+            const tryLockError = only(log.entries, "try_lock").payload?.try_lock;
+            if (run.panicRuntime === "abort") {
+                expect(tryLockError).toBe("would_block");
+            } else {
+                expect(tryLockError).toBe("poisoned");
+            }
+        });
     });
 });

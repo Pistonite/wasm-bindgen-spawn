@@ -37,6 +37,10 @@ tasks:
     - task: run-browser-all
     - task: run-assertion
 
+  run:
+    - task: run-native
+    - task: run-browser
+
   run-native:
     desc: Run native targets using node/bun/deno
     cmds:
