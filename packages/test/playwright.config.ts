@@ -19,7 +19,7 @@ export default defineConfig({
     /* Fail the build on CI if you accidentally left test.only in the source code. */
     forbidOnly: !!process.env.CI,
     retries: 0,
-    workers: undefined,
+    workers: process.env.CI ? 1 : 4,
     reporter: "list",
     /* the real test output is the harness logs under target/test, so there's
      * nothing here worth keeping around */

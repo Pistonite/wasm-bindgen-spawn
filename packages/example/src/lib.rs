@@ -14,22 +14,9 @@ mod harness;
 mod examples;
 
 #[wasm_bindgen]
-pub async fn init_thread_creator(
-    harness: &str,
-    bg_target: &str,
-    bg_js: JsValue,
-    _wasm_module: JsValue,
-) -> bool {
+pub async fn init_thread_creator(bg_target: &str, bg_js: JsValue, _wasm_module: JsValue) -> bool {
     // setup logging harness for testing
-    match harness {
-        "console" => harness::init_console(),
-        "node-fs" => harness::init_node_fs(),
-        "fetch" => harness::init_fetch(),
-        other => {
-            harness::error(format!("invalid harness type: {other}"));
-            return false;
-        }
-    }
+    harness::init();
 
     let id = thread::current().id();
     harness::log("init-main-thread-id", &format!("{id:?}"));
@@ -67,4 +54,9 @@ pub async fn init_thread_creator(
 #[wasm_bindgen]
 pub fn uninit() {
     wasm_bindgen_spawn::terminate_dispatcher();
+}
+
+#[wasm_bindgen]
+pub fn get_log() -> String {
+    harness::snapshot()
 }

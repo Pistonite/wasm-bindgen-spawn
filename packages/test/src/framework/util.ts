@@ -14,6 +14,7 @@ export type DenoWasmBundle =
 export type ViteWasmBundle =
     // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     typeof import("../../target/wasm-pack/debug-unwind-bundler/example.js");
+export type WasmBundle = WebWasmBundle | NodeWasmBundle | DenoWasmBundle | ViteWasmBundle;
 
 export const PROFILES = ["debug", "release"] as const;
 export type Profile = (typeof PROFILES)[number];
@@ -23,10 +24,6 @@ export type PanicRuntime = (typeof PANIC_RUNTIMES)[number];
 // unprocessed output of the bundler target (other than injecting the test harness)
 export const TARGETS = ["no-modules", "web", "nodejs", "deno", "bundler", "vite"] as const;
 export type Target = (typeof TARGETS)[number];
-// hosts should really be "native" and "browser" but too late to change it now
-// node also kind of make sense because the test harness uses node:fs
-export const HOSTS = ["node", "browser"] as const;
-export type Host = (typeof HOSTS)[number];
 
 export const NATIVE_ENGINES = ["node", "bun", "deno"] as const;
 export type NativeEngine = (typeof NATIVE_ENGINES)[number];
@@ -35,19 +32,21 @@ export type BrowserEngine = (typeof BROWSER_ENGINES)[number];
 
 export type Engine = NativeEngine | BrowserEngine;
 
-export const getTargetTestQuads = (filters: string[], host: Host): string[] => {
+export type Triple = `${Profile}-${PanicRuntime}-${Target}`;
+
+export const getTargetTestTriples = (filters: string[], isBrowser: boolean): Triple[] => {
     const shouldRun = (triple: string): boolean => {
         if (!filters.length) {
             return true;
         }
         for (const filter of filters) {
-            if (triple.includes(filter)) {
-                return true;
+            if (!triple.includes(filter)) {
+                return false;
             }
         }
-        return false;
+        return true;
     };
-    const quads: string[] = [];
+    const triples: Triple[] = [];
     for (const profile of PROFILES) {
         for (const panicRuntime of PANIC_RUNTIMES) {
             for (const target of TARGETS) {
@@ -57,19 +56,74 @@ export const getTargetTestQuads = (filters: string[], host: Host): string[] => {
                     // it's an asset
                     continue;
                 }
-                const triple = `${profile}-${panicRuntime}-${target}`;
-                if ((target === "nodejs" || target === "deno") && host === "browser") {
+                // nodejs target generates CJS and deno target only works in deno (and bun),
+                // skip tests if browser
+                if (isBrowser && (target === "nodejs" || target === "deno")) {
                     continue;
                 }
-                if (shouldRun(triple)) {
-                    const quad = `${profile}-${panicRuntime}-${host}-${target}`;
-                    quads.push(quad);
+                const triple = `${profile}-${panicRuntime}-${target}` as const;
+                if (!shouldRun(triple)) {
+                    continue;
                 }
+                triples.push(triple);
             }
         }
     }
 
-    return quads;
+    return triples;
+};
+
+export const getTestSelection = (testNames: string[], testFilters: string[]): string[] => {
+    const engine = getCurrentEngineName();
+    const tests = testNames.filter((testCase) => {
+        if (engine === "deno") {
+            // deno takes 30x more time to spin up 30 workers compared to
+            // other engines; skip tests that need to spawn a lot of workers
+            if (testCase === "example_arc_atomic") {
+                return false;
+            }
+        }
+        if (!testFilters.length) {
+            return true;
+        }
+        return testFilters.some((x) => testCase.includes(x));
+    });
+    tests.sort();
+    return tests;
+};
+
+export interface CommandLineArgs<T extends Engine> {
+    engines: T[];
+    tripleFilters: string[];
+    testFilters: string[];
+}
+
+export const parseCommandLineArgs = <T extends Engine>(
+    args: string[],
+    engines: readonly T[],
+): CommandLineArgs<T> => {
+    const outEngines: T[] = [];
+    const tripleFilters: string[] = [];
+    const testFilters: string[] = [];
+    outer: for (const arg of args) {
+        for (const e of engines) {
+            if (arg === "--" + e) {
+                outEngines.push(e);
+                continue outer;
+            }
+        }
+        if (arg.startsWith("-E")) {
+            testFilters.push(arg.substring(2));
+            continue;
+        }
+        tripleFilters.push(arg);
+    }
+
+    return {
+        engines: outEngines,
+        tripleFilters: tripleFilters,
+        testFilters,
+    };
 };
 
 export const getCurrentEngineName = (): Engine => {
@@ -125,6 +179,8 @@ export const measure = (name: string, f: () => void) => {
     const elapsed = Math.floor(performance.now() - start);
     console.log(`[test ${name}] << done ${elapsed}ms`);
 };
+
+export const getTargetDir = () => path.resolve(import.meta.dirname, "../../target");
 
 export const getTargetSubdir = (sub: "test" | "bundle" | "framework") =>
     path.resolve(import.meta.dirname, "../../target", sub);

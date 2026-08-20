@@ -1,41 +1,47 @@
 use std::any::Any;
 use std::cell::RefCell;
-use std::sync::OnceLock;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::sync::Mutex;
 
-use js_sys::Function;
+use js_sys::{Function, JsString};
 use wasm_bindgen::prelude::*;
 
-pub fn init_console() {
-    // this is mainly for debugging to just print the payload in the JS console
-    // however note that console.log is tied to the JS Event Loop and some runtime
-    // may not process it when *any* thread is blocked on atomics (looking at you node)
-    init_harness_script("console.log(ARG)", false)
+static LOGS: Mutex<String> = Mutex::new(String::new());
+thread_local! {
+    // since the harness stores a serialization function implemented in JS
+    // it needs to be thread local
+    static HARNESS: RefCell<Option<Harness>> = const { RefCell::new(None) };
 }
-pub fn init_node_fs() {
-    // feed the payload through node:fs exposed as globalThis.__fs
-    init_harness_script(
-        "globalThis.__fs.appendFileSync(globalThis.__harness_output_path,ARG+'\\n','utf8')",
-        false,
-    )
-}
-pub fn init_fetch() {
-    // feed the payload through a POST request to a webserver
-    init_harness_script(
-        "globalThis.fetch(globalThis.__harness_fetch_endpoint,{method:'POST',body:ARG})",
-        true,
-    )
+fn with_harness<F: FnOnce(&Harness)>(f: F) {
+    HARNESS.with_borrow_mut(|x| match x {
+        None => {
+            let harness = Harness::new();
+            f(&harness);
+            *x = Some(harness);
+        }
+        Some(x) => {
+            f(x);
+        }
+    })
 }
 
-pub fn panic_info<'a>(payload: &'a Box<dyn Any + Send + 'static>) -> &'a str {
-    if let Some(s) = payload.downcast_ref::<&str>() {
-        s
-    } else if let Some(s) = payload.downcast_ref::<String>() {
-        s.as_str()
-    } else {
-        "unknown panic info"
-    }
+pub fn init() {
+    // first hook up panic messages to the logging harness,
+    // so that our tests can assert a panic happened with the correct message
+    // in a real app you might want to hook it up to console.error or some
+    // other means to see the panic message (for example with
+    // the `console_error_panic_hook crate` crate)
+    std::panic::set_hook(Box::new(move |info| {
+        let harness = Harness::new();
+        let info = info.to_string();
+        harness.log("panic", &info);
+        // uncomment to debug
+        // console_error_str(&info);
+    }));
+}
+
+/// Read the log snapshot
+pub fn snapshot() -> String {
+    LOGS.lock().unwrap().clone()
 }
 
 pub fn log(tag: &str, s: &str) {
@@ -43,64 +49,15 @@ pub fn log(tag: &str, s: &str) {
 }
 pub fn error(s: impl Into<JsValue>) {
     let s = s.into();
-    if !with_harness(|x| x.error(&s)) {
-        console_error(&s);
-    }
-}
-static IS_ASYNC_HARNESS: AtomicBool = AtomicBool::new(false);
-static HARNESS_SCRIPT: OnceLock<String> = OnceLock::new();
-
-fn init_harness_script(script: &str, is_async: bool) {
-    let script = script.to_string();
-    let _ = HARNESS_SCRIPT.set(script.clone());
-    IS_ASYNC_HARNESS.store(is_async, Ordering::Relaxed);
-
-    // first hook up panic messages to the logging harness,
-    // so that our tests can assert a panic happened with the correct message
-    // in a real app you might want to hook it up to console.error or some
-    // other means to see the panic message (for example with
-    // the `console_error_panic_hook crate` crate)
-    std::panic::set_hook(Box::new(move |info| {
-        let harness = Harness::new(&script);
-        let info = info.to_string();
-        harness.log("panic", &info);
-    }));
-}
-thread_local! {
-    static HARNESS: RefCell<Option<Harness>> = const { RefCell::new(None) };
-}
-fn with_harness<F: FnOnce(&Harness)>(f: F) -> bool {
-    HARNESS.with_borrow_mut(|x| match x {
-        None => match HARNESS_SCRIPT.get() {
-            Some(script) => {
-                let harness = Harness::new(script);
-                f(&harness);
-                *x = Some(harness);
-                true
-            }
-            None => {
-                console_error_str("harness not initialized");
-                false
-            }
-        },
-        Some(x) => {
-            f(x);
-            true
-        }
-    })
+    with_harness(|x| x.error(&s));
 }
 struct Harness {
     serialize_fn: Function,
-    emit_fn: Function,
 }
 impl Harness {
-    fn new(emit_script: &str) -> Self {
+    fn new() -> Self {
         let serialize_fn = Function::new_with_args("ARG", include_str!("serialize.js"));
-        let emit_fn = Function::new_with_args("ARG", emit_script);
-        Self {
-            serialize_fn,
-            emit_fn,
-        }
+        Self { serialize_fn }
     }
     fn log(&self, tag: &str, x: &str) {
         self.emit(x.into(), tag.into());
@@ -112,20 +69,31 @@ impl Harness {
         let thread_id = u64::from(std::thread::current().id().as_u64()) as u32;
         let args = JsValue::from(vec![s, tag, thread_id.into()]);
 
-        match self.serialize_fn.call1(&JsValue::undefined(), &args) {
+        match self
+            .serialize_fn
+            .call1(&JsValue::undefined(), &args)
+            .and_then(|x| x.dyn_into::<JsString>())
+        {
             Ok(v) => {
-                if self.emit_fn.call1(&JsValue::undefined(), &v).is_err() {
-                    console_error_str("harness: failed to emit payload");
-                }
+                let rs_string: String = v.into();
+                let mut logs = LOGS.lock().unwrap();
+                // uncomment to debug
+                // console_log_str(&rs_string);
+                logs.push_str(&rs_string);
+                logs.push('\n');
             }
             Err(_) => console_error_str("harness: failed to serialize emit payload"),
         }
+    }
+}
 
-        if IS_ASYNC_HARNESS.load(Ordering::Relaxed) {
-            // in the fetch harness we cannot wait, so waiting before the thread is killed
-            // so we don't lose any logs (looking at you firefox)
-            std::thread::sleep(Duration::from_millis(100));
-        }
+pub fn panic_info<'a>(payload: &'a Box<dyn Any + Send + 'static>) -> &'a str {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        s
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        s.as_str()
+    } else {
+        "unknown panic info"
     }
 }
 

@@ -8,12 +8,12 @@ const main = async () => {
         return;
     }
     const pathnamePart = pathname.substring(pathname.lastIndexOf("/") + 1).trim();
-    const [profile, panicRuntime, host] = pathnamePart.split("-", 3);
-    const prefix = `${profile}-${panicRuntime}-${host}`;
+    const [profile, panicRuntime] = pathnamePart.split("-", 2);
+    const prefix = `${profile}-${panicRuntime}`;
     const target = pathnamePart.substring(prefix.length + 1);
-    const quad = `${prefix}-${target}`;
+    const triple = `${prefix}-${target}`;
 
-    console.log(`starting web worker for quad: ${quad}`);
+    console.log(`starting web worker for triple: ${triple}`);
 
     const testFilters =
         new URLSearchParams(location.search)
@@ -21,20 +21,18 @@ const main = async () => {
             ?.split(",")
             ?.map((x) => x.trim()) || [];
 
-    const harnessInjectionScript =
-        "\n;globalThis.__harness_fetch_endpoint=" +
-        JSON.stringify(location.origin + "/harness/" + quad) +
-        ";\n";
+    const logOutputEndpoint = location.origin + "/harness/" + triple;
+    const wasmPath = location.origin + `/bundle/${triple}/example_bg.wasm`;
+    const wasmBytes = await (await fetch(wasmPath)).arrayBuffer();
 
     switch (target) {
         case "no-modules": {
-            const scriptPath = location.origin + `/bundle/${quad}/example.js`;
-            const script = await (await fetch(scriptPath)).text();
-            const wasmPath = location.origin + `/bundle/${quad}/example_bg.wasm`;
-            const wasmBytes = await (await fetch(wasmPath)).arrayBuffer();
-            const workerPath = location.origin + `/bundle/${quad}/worker.js`;
+            const scriptPath = location.origin + `/bundle/${triple}/example.js`;
+            const bindgenScript = await (await fetch(scriptPath)).text();
+
+            // inject the wasm_bindgen into the worker script
+            const workerPath = location.origin + `/bundle/${triple}/worker.js`;
             const workerScript = await (await fetch(workerPath)).text();
-            const bindgenScript = script + harnessInjectionScript;
             const combinedScript = bindgenScript + workerScript;
             const url = URL.createObjectURL(
                 new Blob([combinedScript], { type: "text/javascript" }),
@@ -45,7 +43,13 @@ const main = async () => {
                 const d = e.data;
                 setOutput(d);
                 if (d === "started") {
-                    worker.postMessage({ testFilters, wasmBytes, bindgenScript });
+                    worker.postMessage({
+                        logOutputEndpoint,
+                        target,
+                        testFilters,
+                        wasmBytes,
+                        bindgenScript,
+                    });
                 }
                 if (d === "done") {
                     worker.terminate();
@@ -55,60 +59,56 @@ const main = async () => {
             break;
         }
         case "web": {
-            const scriptPath = location.origin + `/bundle/${quad}/example.js`;
-            const script = await (await fetch(scriptPath)).text();
-            const wasmPath = location.origin + `/bundle/${quad}/example_bg.wasm`;
-            const wasmBytes = await (await fetch(wasmPath)).arrayBuffer();
-            // const workerScript = await (await fetch(workerPath)).text();
-            const bindgenScript = script + harnessInjectionScript;
-            // const url = URL.createObjectURL(
-            //     new Blob([workerScript], { type: "text/javascript" }),
-            // );
+            const scriptPath = location.origin + `/bundle/${triple}/example.js`;
+            const bindgenScript = await (await fetch(scriptPath)).text();
 
-            const workerPath = location.origin + `/bundle/${quad}/worker.js`;
+            const workerPath = location.origin + `/bundle/${triple}/worker.js`;
             const worker = new Worker(workerPath, { type: "module" });
             worker.onmessage = (e) => {
                 const d = e.data;
                 setOutput(d);
                 if (d === "started") {
-                    worker.postMessage({ testFilters, wasmBytes, bindgenScript });
+                    worker.postMessage({
+                        logOutputEndpoint,
+                        target,
+                        testFilters,
+                        wasmBytes,
+                        bindgenScript,
+                    });
                 }
                 if (d === "done") {
                     worker.terminate();
-                    // URL.revokeObjectURL(url);
                 }
             };
             break;
         }
         case "vite": {
-            const scriptPath = location.origin + `/bundle/${quad}/example_web.js`;
-            const script = await (await fetch(scriptPath)).text();
-            const wasmPath = location.origin + `/bundle/${quad}/example_bg.wasm`;
-            const wasmBytes = await (await fetch(wasmPath)).arrayBuffer();
-            // const workerScript = await (await fetch(workerPath)).text();
-            const bindgenScript = script + harnessInjectionScript;
-            // const url = URL.createObjectURL(
-            //     new Blob([workerScript], { type: "text/javascript" }),
-            // );
+            const scriptPath = location.origin + `/bundle/${triple}/example_web.js`;
+            const bindgenScript = await (await fetch(scriptPath)).text();
 
-            const workerPath = location.origin + `/bundle/${quad}/worker.js`;
+            const workerPath = location.origin + `/bundle/${triple}/worker.js`;
             const worker = new Worker(workerPath, { type: "module" });
             worker.onmessage = (e) => {
                 const d = e.data;
                 setOutput(d);
                 if (d === "started") {
-                    worker.postMessage({ testFilters, wasmBytes, bindgenScript });
+                    worker.postMessage({
+                        logOutputEndpoint,
+                        target,
+                        testFilters,
+                        wasmBytes,
+                        bindgenScript,
+                    });
                 }
                 if (d === "done") {
                     worker.terminate();
-                    // URL.revokeObjectURL(url);
                 }
             };
             break;
         }
 
         default:
-            setOutput("error: invalid quad: " + quad);
+            setOutput("error: invalid triple: " + triple);
     }
 };
 

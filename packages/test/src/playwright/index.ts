@@ -7,7 +7,8 @@ import {
     type BrowserEngine,
     getPackageRoot,
     getTargetSubdir,
-    getTargetTestQuads,
+    getTargetTestTriples,
+    parseCommandLineArgs,
 } from "#framework";
 
 import { startHttpServer, stopHttpServer } from "./http_server.ts";
@@ -52,41 +53,28 @@ const main = async () => {
         // ensure things are stabilized
         await new Promise((r) => setTimeout(r, 1000));
 
-        const engines: BrowserEngine[] = [];
-        const quadsFilter: string[] = [];
-        const testFilters: string[] = [];
-        outer: for (const arg of process.argv.slice(2)) {
-            for (const e of BROWSER_ENGINES) {
-                if (arg === "--" + e) {
-                    engines.push(e);
-                    continue outer;
-                }
-            }
-            if (arg.startsWith("-E")) {
-                testFilters.push(arg.substring(2));
-                continue;
-            }
-            quadsFilter.push(arg);
-        }
+        const { engines, tripleFilters, testFilters } = parseCommandLineArgs(
+            process.argv.slice(2),
+            BROWSER_ENGINES,
+        );
 
         // clean the browser test outputs
         for (const engine of engines.length ? engines : BROWSER_ENGINES) {
             const dir = path.join(getTargetSubdir("test"), engine);
             fs.mkdirSync(dir, { recursive: true });
-            const quads = getTargetTestQuads(quadsFilter, "browser");
-            for (const quad of quads) {
-                fs.rmSync(path.join(dir, quad + ".log"), { force: true });
+            const triples = getTargetTestTriples(tripleFilters, true /* isBrowser */);
+            for (const triple of triples) {
+                fs.rmSync(path.join(dir, triple + ".log"), { force: true });
             }
         }
 
         if (!httpOnly) {
             let code: number;
             try {
-                code = await runPlaywright(engines, quadsFilter, testFilters);
+                code = await runPlaywright(engines, tripleFilters, testFilters);
             } finally {
-                console.log("waiting for log flushing to complete");
                 // wait for a bit to ensure log files are completely flushed
-                await new Promise((r) => setTimeout(r, 5000));
+                await new Promise((r) => setTimeout(r, 1000));
                 await cleanup();
             }
 
@@ -104,7 +92,7 @@ const main = async () => {
 
 const runPlaywright = async (
     engines: BrowserEngine[],
-    quadsFilter: string[],
+    tripleFilters: string[],
     testFilters: string[],
 ): Promise<number> => {
     const cli = getPlaywrightCli();
@@ -120,7 +108,7 @@ const runPlaywright = async (
                 stdio: "inherit",
                 cwd: getPackageRoot(),
                 env: {
-                    PW_WBS_QUAD_FILTERS: quadsFilter.join(","),
+                    PW_WBS_TRIPLE_FILTERS: tripleFilters.join(","),
                     PW_WBS_TEST_FILTERS: testFilters.join(","),
                     PW_TEST_CONNECT_WS_ENDPOINT: `ws://localhost:${PW_PORT}`,
                 },

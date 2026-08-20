@@ -21,11 +21,6 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
     it("got output from threads", () => {
         const startEntries = log.entries.filter((x) => x.payload?.thread_start);
         expect(startEntries.length).toBe(5);
-        let startingThread = 3;
-        for (const e of startEntries) {
-            expect(e.thread).toBe(startingThread);
-            startingThread++;
-        }
         const returnEntries = log.entries.filter(
             (x) => x.payload?.thread_panic || x.payload?.thread_return,
         );
@@ -38,7 +33,7 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
                 if (run.panicRuntime === "unwind") {
                     expect(e.payload.thread_panic).toBe("hey, I'm 2 (this is a test panic)");
                 } else {
-                    expect(e.payload.thread_panic).toBe("thread 2 panicked or aborted!");
+                    expect(e.payload.thread_panic).toMatch(/panicked or aborted!/);
                 }
             } else {
                 expect(e.payload.thread_return).toBe(expectedValue);

@@ -1,54 +1,41 @@
 import child_process from "node:child_process";
 import path from "node:path";
 
-import { getTargetTestQuads, NATIVE_ENGINES, type NativeEngine } from "#framework";
+import {
+    getTargetDir,
+    getTargetTestTriples,
+    NATIVE_ENGINES,
+    parseCommandLineArgs,
+    type NativeEngine,
+} from "#framework";
 
 const main = async () => {
-    const args = process.argv.slice(2);
-    const engines: NativeEngine[] = [];
-    const quadsFilter: string[] = [];
-    const testFilters: string[] = [];
-    for (const arg of args) {
-        if (arg === "--node") {
-            engines.push("node");
-            continue;
-        }
-        if (arg === "--bun") {
-            engines.push("bun");
-            continue;
-        }
-        if (arg === "--deno") {
-            engines.push("deno");
-            continue;
-        }
-        if (arg.startsWith("-E")) {
-            testFilters.push(arg.substring(2));
-            continue;
-        }
-        quadsFilter.push(arg);
-    }
+    const { engines, tripleFilters, testFilters } = parseCommandLineArgs(
+        process.argv.slice(2),
+        NATIVE_ENGINES,
+    );
     if (engines.length === 0) {
         engines.push(...NATIVE_ENGINES);
     }
 
-    const quads = getTargetTestQuads(quadsFilter, "node");
-    if (!quads.length) {
+    const triples = getTargetTestTriples(tripleFilters, false /* isBrowser */);
+    if (!triples.length) {
         console.error("no tests specified");
         process.exit(1);
     }
 
     const failed: string[] = [];
     // run quad one at a time to avoid overwhelm all cores
-    for (const quad of quads) {
+    for (const triple of triples) {
         const results = await Promise.all(
             engines.map(
                 async (engine) =>
-                    [engine, await runTestForQuad(engine, quad, testFilters)] as const,
+                    [engine, await runTestForTriple(engine, triple, testFilters)] as const,
             ),
         );
         for (const [engine, ok] of results) {
             if (!ok) {
-                failed.push(`${engine}/${quad}`);
+                failed.push(`${engine}/${triple}`);
             }
         }
     }
@@ -56,27 +43,27 @@ const main = async () => {
         console.error(`failed: ${failed.join(", ")}`);
         process.exit(1);
     }
-    console.log("all native tests passed");
+    console.log("native tests finished");
 };
 
-const runTestForQuad = async (
+const runTestForTriple = async (
     engine: NativeEngine,
-    quad: string,
+    triple: string,
     testFilters: string[],
 ): Promise<boolean> => {
-    if (engine === "deno" && quad.endsWith("-nodejs")) {
+    if (engine === "deno" && triple.endsWith("-nodejs")) {
         // skip nodejs tests in unsupported engines
         return true;
     }
-    if (engine === "node" && quad.endsWith("-deno")) {
+    if (engine === "node" && triple.endsWith("-deno")) {
         // skip deno tests in unsupported engines
         return true;
     }
-    const script = getDriverScript(quad);
-    const [command, ...args] = getEngineCommand(engine, script, quad, testFilters);
-    const prefix = `[${engine}/${quad}] `;
+    const script = path.resolve(import.meta.dirname, "driver.ts");
+    const [command, ...args] = getEngineCommand(engine, script, triple, testFilters);
+    const prefix = `[${engine}/${triple}]`;
 
-    console.log(`running ${engine} ${quad}`);
+    console.log(`running ${engine} ${triple}`);
     return await new Promise<boolean>((resolve) => {
         const child = child_process.spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
         let pending = "";
@@ -111,27 +98,28 @@ const runTestForQuad = async (
     });
 };
 
-const getDriverScript = (quad: string): string => {
-    const DRIVER_DIR = path.resolve(import.meta.dirname, "driver");
-    const [profile, panicRuntime, host] = quad.split("-", 3);
-    const target = quad.substring(`${profile}-${panicRuntime}-${host}-`.length);
-    return path.join(DRIVER_DIR, `${target.replaceAll("-", "_")}.ts`);
-};
-
 const getEngineCommand = (
     engine: NativeEngine,
     script: string,
-    quad: string,
+    triple: string,
     testFilters: string[],
 ): string[] => {
+    const targetDir = getTargetDir();
     switch (engine) {
         case "node":
-            return ["node", script, quad, ...testFilters];
+            return ["node", script, triple, ...testFilters];
         case "bun":
-            return ["bun", script, quad, ...testFilters];
+            return ["bun", script, triple, ...testFilters];
         case "deno":
             // needs full permissions to read the bundles and write the harness logs
-            return ["deno", "-A", script, quad, ...testFilters];
+            return [
+                "deno",
+                "--allow-read=" + targetDir,
+                "--allow-write=" + targetDir,
+                script,
+                triple,
+                ...testFilters,
+            ];
     }
 };
 

@@ -11,19 +11,19 @@ for (const profile of PROFILES) {
     for (const panicRuntime of PANIC_RUNTIMES) {
         for (const target of ["no-modules", "web", "vite"]) {
             for (const engine of BROWSER_ENGINES) {
-                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-browser-${target}.log`);
+                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-${target}.log`);
             }
             for (const engine of NATIVE_ENGINES) {
-                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-node-${target}.log`);
+                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-${target}.log`);
             }
         }
         // nodejs target
         for (const engine of ["node", "bun"]) {
-            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-node-nodejs.log`);
+            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-nodejs.log`);
         }
         // deno target
         for (const engine of ["bun", "deno"]) {
-            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-node-deno.log`);
+            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-deno.log`);
         }
     }
 }

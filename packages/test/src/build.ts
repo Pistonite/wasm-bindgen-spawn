@@ -5,8 +5,6 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 
 import {
-    type Host,
-    HOSTS,
     PANIC_RUNTIMES,
     type PanicRuntime,
     type Profile,
@@ -109,12 +107,10 @@ const main = async () => {
             }
         }
 
-        for (const host of HOSTS) {
-            runPostBuild(panicRuntime, profile, target, host);
-            if (target === "bundler") {
-                for (const extraTarget of ["vite"] as const) {
-                    runPostBuild(panicRuntime, profile, extraTarget, host);
-                }
+        runBundleBuild(panicRuntime, profile, target);
+        if (target === "bundler") {
+            for (const extraTarget of ["vite"] as const) {
+                runBundleBuild(panicRuntime, profile, extraTarget);
             }
         }
     }
@@ -198,153 +194,88 @@ const runWasmPack = async (
     const bgJsHash = getFileHashIfExists(path.join(outDir, "example_bg.js"));
     const bgWasmHash = getFileHashIfExists(path.join(outDir, "example_bg.wasm"));
     const bgWasmDtsHash = getFileHashIfExists(path.join(outDir, "example_bg.wasm.d.ts"));
-    console.log(`done ${triple}`);
     return { panicRuntime, profile, target, dtsHash, jsHash, bgJsHash, bgWasmHash, bgWasmDtsHash };
 };
 
-const runPostBuild = (panicRuntime: PanicRuntime, profile: Profile, target: Target, host: Host) => {
+const runBundleBuild = (panicRuntime: PanicRuntime, profile: Profile, target: Target) => {
     const triple = `${profile}-${panicRuntime}-${target}`;
-    const quad = `${profile}-${panicRuntime}-${host}-${target}`;
     const targetDir = getTargetDir();
     const targetWasmPackDir = path.join(targetDir, "wasm-pack");
     const targetBundleDir = path.join(targetDir, "bundle");
-    const outDir = path.join(targetBundleDir, quad);
-    const wasmPackOutDir = path.join(targetWasmPackDir, triple);
+    const outDir = path.join(targetBundleDir, triple);
+    const wasmPackOutDir =
+        target === "vite"
+            ? path.join(targetWasmPackDir, `${profile}-${panicRuntime}-bundler`)
+            : path.join(targetWasmPackDir, triple);
     const frameworkOutDir = path.join(targetDir, "framework");
 
     if (fs.existsSync(outDir)) {
         fs.rmSync(outDir, { recursive: true, force: true });
     }
+    fs.mkdirSync(outDir, { recursive: true });
+    console.log(`generating host bundle for ${triple}`);
+
+    const webWasmPackOutDir = path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`);
+
+    const copyWasmPackOutput = (inFile: string, outFile?: string) => {
+        fs.copyFileSync(path.join(wasmPackOutDir, inFile), path.join(outDir, outFile || inFile));
+    };
+    const copyWebWasmPackOutput = (inFile: string, outFile?: string) => {
+        fs.copyFileSync(path.join(webWasmPackOutDir, inFile), path.join(outDir, outFile || inFile));
+    };
+    const copyFrameworkOutput = (inFile: string, outFile?: string) => {
+        fs.copyFileSync(path.join(frameworkOutDir, inFile), path.join(outDir, outFile || inFile));
+    };
 
     switch (target) {
         case "no-modules": {
-            fs.mkdirSync(outDir, { recursive: true });
-            console.log(`generating host bundle for ${quad}`);
-            if (host === "node") {
-                const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
-                fs.writeFileSync(
-                    path.join(outDir, "example.js"),
-                    `import fs from "node:fs";globalThis.__fs=fs;\n${js}`,
-                );
-                fs.writeFileSync(
-                    path.join(outDir, "example_esm.js"),
-                    `import fs from "node:fs";globalThis.__fs=fs;\n${js}\nexport default wasm_bindgen;`,
-                );
-                fs.copyFileSync(
-                    path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`, "example.d.ts"),
-                    path.join(outDir, "example_esm.d.ts"),
-                );
-            } else {
-                fs.copyFileSync(
-                    path.join(wasmPackOutDir, "example.js"),
-                    path.join(outDir, "example.js"),
-                );
-                fs.copyFileSync(
-                    path.join(frameworkOutDir, "worker_no_modules.js"),
-                    path.join(outDir, "worker.js"),
-                );
-            }
+            copyWasmPackOutput("example.js");
+            copyWasmPackOutput("example_bg.wasm");
+            copyWasmPackOutput("example.d.ts");
+            copyFrameworkOutput("worker.js");
+            // create an ESM js that just exports the wasm_bindgen object
+            // for easier loading in NodeJS
+            const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
+            fs.writeFileSync(
+                path.join(outDir, "example_esm.js"),
+                `${js}\nexport default wasm_bindgen;`,
+            );
+            copyWebWasmPackOutput("example.d.ts", "example_esm.d.ts");
             break;
         }
         case "web": {
-            fs.mkdirSync(outDir, { recursive: true });
-            console.log(`generating host bundle for ${quad}`);
-            if (host === "node") {
-                const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
-                fs.writeFileSync(
-                    path.join(outDir, "example.js"),
-                    `import fs from "node:fs";globalThis.__fs=fs;\n${js}`,
-                );
-            } else {
-                fs.copyFileSync(
-                    path.join(wasmPackOutDir, "example.js"),
-                    path.join(outDir, "example.js"),
-                );
-                fs.copyFileSync(
-                    path.join(frameworkOutDir, "worker_web.js"),
-                    path.join(outDir, "worker.js"),
-                );
-            }
+            copyWasmPackOutput("example.js");
+            copyWasmPackOutput("example_bg.wasm");
+            copyWasmPackOutput("example.d.ts");
+            copyFrameworkOutput("worker.js");
             break;
         }
         case "nodejs": {
-            if (host === "browser") {
-                return;
-            }
-            fs.mkdirSync(outDir, { recursive: true });
-            console.log(`generating host bundle for ${quad}`);
-            const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
             // wasm-bindgen emits common JS for nodejs target so the extension must be .cjs
-            fs.writeFileSync(
-                path.join(outDir, "example.cjs"),
-                `globalThis.__fs=require("fs");\n${js}`,
-            );
-            const webJs = fs.readFileSync(
-                path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`, "example.js"),
-                "utf8",
-            );
-            fs.writeFileSync(
-                path.join(outDir, "example_web.js"),
-                `import fs from "node:fs";globalThis.__fs=fs;\n${webJs}`,
-            );
+            copyWasmPackOutput("example.js", "example.cjs");
+            copyWasmPackOutput("example_bg.wasm");
+            copyWasmPackOutput("example.d.ts");
+            // extra web bindgen script for initializing worker threads
+            copyWebWasmPackOutput("example.js", "example_web.js");
             break;
         }
         case "deno": {
-            if (host === "browser") {
-                return;
-            }
-            fs.mkdirSync(outDir, { recursive: true });
-            console.log(`generating host bundle for ${quad}`);
-            const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
-            fs.writeFileSync(
-                path.join(outDir, "example.js"),
-                `import fs from "node:fs";globalThis.__fs=fs;\n${js}`,
-            );
-            const webJs = fs.readFileSync(
-                path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`, "example.js"),
-                "utf8",
-            );
-            fs.writeFileSync(
-                path.join(outDir, "example_web.js"),
-                `import fs from "node:fs";globalThis.__fs=fs;\n${webJs}`,
-            );
+            copyWasmPackOutput("example.js");
+            copyWasmPackOutput("example_bg.wasm");
+            copyWasmPackOutput("example.d.ts");
+            // extra web bindgen script for initializing worker threads
+            copyWebWasmPackOutput("example.js", "example_web.js");
             break;
         }
         case "bundler": {
-            if (host === "browser") {
-                // cannot run unbundled bundler target in browser
-                return;
-            }
-            fs.mkdirSync(outDir, { recursive: true });
-            console.log(`generating host bundle for ${quad}`);
-            fs.copyFileSync(
-                path.join(wasmPackOutDir, "example_bg.js"),
-                path.join(outDir, "example_bg.js"),
-            );
-            const js = fs.readFileSync(path.join(wasmPackOutDir, "example.js"), "utf8");
-            fs.writeFileSync(
-                path.join(outDir, "example.js"),
-                `import fs from "node:fs";globalThis.__fs=fs;\n${js}`,
-            );
+            copyWasmPackOutput("example.js");
+            copyWasmPackOutput("example_bg.js");
+            copyWasmPackOutput("example_bg.wasm");
+            copyWasmPackOutput("example.d.ts");
             break;
         }
         case "vite": {
-            // fs.mkdirSync(outDir, { recursive: true });
-            console.log(`generating host bundle for ${quad}`);
-            const viteProjectQuad = `${profile}-${panicRuntime}-${host}-vite`;
-            const wasmPackOutDir = path.join(
-                targetWasmPackDir,
-                `${profile}-${panicRuntime}-bundler`,
-            );
-            const viteProjectDir = ensureViteBundleWorkspace(wasmPackOutDir, viteProjectQuad);
-            // inject harness for node:fs
-            if (host === "node") {
-                const js = fs.readFileSync(path.join(viteProjectDir, "example.js"), "utf8");
-                fs.writeFileSync(
-                    path.join(viteProjectDir, "example.js"),
-                    `import fs from "node:fs";globalThis.__fs=fs;\n${js}`,
-                );
-            }
+            const viteProjectDir = ensureViteBundleWorkspace(wasmPackOutDir, triple);
             const vitePath = path.join(viteProjectDir, "node_modules", "vite", "bin", "vite.js");
             const result = child_process.spawnSync(process.execPath, [vitePath, "build"], {
                 stdio: "inherit",
@@ -354,50 +285,15 @@ const runPostBuild = (panicRuntime: PanicRuntime, profile: Profile, target: Targ
                 throw new Error("vite bundling failed");
             }
             fs.cpSync(path.join(viteProjectDir, "dist"), outDir, { recursive: true });
-            fs.copyFileSync(
-                path.join(wasmPackOutDir, "example.d.ts"),
-                path.join(outDir, "example.d.ts"),
-            );
-            if (host === "browser") {
-                fs.copyFileSync(
-                    path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`, "example.js"),
-                    path.join(outDir, "example_web.js"),
-                );
-                fs.copyFileSync(
-                    path.join(frameworkOutDir, "worker_vite.js"),
-                    path.join(outDir, "worker.js"),
-                );
-            } else {
-                const webJs = fs.readFileSync(
-                    path.join(targetWasmPackDir, `${profile}-${panicRuntime}-web`, "example.js"),
-                    "utf8",
-                );
-                fs.writeFileSync(
-                    path.join(outDir, "example_web.js"),
-                    `import fs from "node:fs";globalThis.__fs=fs;\n${webJs}`,
-                );
-            }
-            fs.copyFileSync(
-                path.join(
-                    targetWasmPackDir,
-                    `${profile}-${panicRuntime}-bundler`,
-                    "example_bg.wasm",
-                ),
-                path.join(outDir, "example_bg.wasm"),
-            );
+            copyWasmPackOutput("example.d.ts");
+            copyFrameworkOutput("worker.js");
+            // extra web bindgen script for initializing worker threads
+            copyWebWasmPackOutput("example.js", "example_web.js");
+            // the wasm asset might be inlined into the output
+            // but we need the bytes for initializing the worker threads
+            copyWasmPackOutput("example_bg.wasm");
             break;
         }
-    }
-
-    if (!isBundleNeededTarget(target)) {
-        fs.copyFileSync(
-            path.join(wasmPackOutDir, "example_bg.wasm"),
-            path.join(outDir, "example_bg.wasm"),
-        );
-        fs.copyFileSync(
-            path.join(wasmPackOutDir, "example.d.ts"),
-            path.join(outDir, "example.d.ts"),
-        );
     }
 };
 
@@ -416,29 +312,14 @@ const runFrameworkBuild = () => {
             stdio: "inherit",
         },
     );
-    child_process.execSync(
-        `bun build ${path.join(sourceDir, "worker_no_modules.ts")} --outdir=${outDir}`,
-        {
-            stdio: "inherit",
-        },
-    );
-    child_process.execSync(
-        `bun build ${path.join(sourceDir, "worker_web.ts")} --outdir=${outDir}`,
-        {
-            stdio: "inherit",
-        },
-    );
-    child_process.execSync(
-        `bun build ${path.join(sourceDir, "worker_vite.ts")} --outdir=${outDir}`,
-        {
-            stdio: "inherit",
-        },
-    );
+    child_process.execSync(`bun build ${path.join(sourceDir, "worker.ts")} --outdir=${outDir}`, {
+        stdio: "inherit",
+    });
 };
 
-const ensureViteBundleWorkspace = (wasmPackOutDir: string, quad: string): string => {
+const ensureViteBundleWorkspace = (wasmPackOutDir: string, triple: string): string => {
     const dir = path.join(getTargetDir(), "bundler-vite");
-    const projectDir = path.join(dir, quad);
+    const projectDir = path.join(dir, triple);
     if (!fs.existsSync(projectDir)) {
         fs.mkdirSync(projectDir, { recursive: true });
     }
@@ -474,7 +355,7 @@ catalog:
     const packageJsonPath = path.join(projectDir, "package.json");
     const packageJson = JSON.stringify(
         {
-            name: quad,
+            name: triple,
             version: "0.0.0",
             type: "module",
             private: true,
@@ -489,7 +370,7 @@ catalog:
     if (fs.existsSync(packageJsonPath)) {
         const existing = fs.readFileSync(packageJsonPath, "utf-8");
         if (existing !== packageJson) {
-            console.log("[bundler-vite] overwriting old package.json for quad " + quad);
+            console.log("[bundler-vite] overwriting old package.json for quad " + triple);
             fs.writeFileSync(packageJsonPath, packageJson);
             needPnpmInstall = true;
         }
