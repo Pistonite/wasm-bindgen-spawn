@@ -61,46 +61,6 @@ macro_rules! example {
     };
 }
 
-example!(example_atomic_usize_pooled, {
-    let tc = thread_creator();
-    let counter = Arc::new(AtomicUsize::new(0));
-    let num = Function::new_no_args("return navigator.hardwareConcurrency")
-        .call0(&JsValue::null())
-        .unwrap()
-        .as_f64()
-        .unwrap() as usize;
-
-    log_str(&format!("Spawning {num} threads for 1000 tasks"));
-    let mut handles = vec![];
-    let mut senders = vec![];
-    for _ in 0..num {
-        let counter = counter.clone();
-        let (send, recv) = std::sync::mpsc::channel::<usize>();
-        let h = tc
-            .spawn(move || {
-                for i in recv {
-                    counter.fetch_add(i, std::sync::atomic::Ordering::Relaxed);
-                    log_str("incremented");
-                }
-            })
-            .unwrap();
-        handles.push(h);
-        senders.push(send);
-    }
-    for i in 0..1000 {
-        let j = i % num;
-        senders[j].send(1).unwrap();
-    }
-    drop(senders);
-    let sum = counter.load(std::sync::atomic::Ordering::Relaxed);
-    log_str(&format!("Without joining, sum is : {sum}"));
-    for x in handles {
-        x.join().unwrap();
-    }
-    let sum = counter.load(std::sync::atomic::Ordering::Relaxed);
-    log_str(&format!("After joining, sum is: {sum}"));
-});
-
 example!(example_sleep, {
     let tc = thread_creator();
     let mut handles = vec![];
@@ -119,48 +79,6 @@ example!(example_sleep, {
     for (i, x) in handles.into_iter().enumerate() {
         x.join().unwrap();
         log_str(&format!("Joined: {i}"));
-    }
-});
-
-example!(example_mutex, {
-    let tc = thread_creator();
-    let v = Arc::new(Mutex::new(Vec::<i32>::new()));
-    let mut handles = vec![];
-    let count = 5000000;
-    for i in 0..2 {
-        let v = v.clone();
-        let r = tc
-            .spawn(move || {
-                for _ in 0..count {
-                    {
-                        let mut v = v.lock().unwrap();
-                        v.push(i);
-                    }
-
-                    // if the count above is too large for you to run, try uncomment
-                    // the following sleep to see interleaving with a lower count
-                    // std::thread::sleep(std::time::Duration::from_millis(1));
-                }
-            })
-            .unwrap();
-        handles.push(r);
-    }
-    for x in handles {
-        x.join().unwrap()
-    }
-    {
-        let v = v.lock().unwrap();
-        log_str(&format!("Length: {}", v.len()));
-        // find where interleave starts
-        let pos = v.iter().position(|&x| x == 1).unwrap();
-        if pos == count {
-            log_str("No interleaving");
-        } else {
-            log_str(&format!(
-                "Interleave section : {:?}",
-                &v[pos..v.len() - pos]
-            ));
-        }
     }
 });
 

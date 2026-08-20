@@ -62,6 +62,15 @@ export const findEntry = (entries: LogEntry[], key: string, value: number): LogE
     return found[0];
 };
 
+/** get the single entry carrying `key` */
+export const only = (entries: LogEntry[], key: string): LogEntry => {
+    const found = pickEntries(entries, key);
+    if (found.length !== 1) {
+        throw new Error(`expected exactly 1 entry with ${key}, got ${found.length}`);
+    }
+    return found[0];
+};
+
 /** Get the entries logged by `thread`, in order */
 export const entriesFromThread = (entries: LogEntry[], thread: number): LogEntry[] =>
     entries.filter((x) => x.thread === thread);

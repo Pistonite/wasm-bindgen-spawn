@@ -34,8 +34,8 @@ pub fn init() {
         let harness = Harness::new();
         let info = info.to_string();
         harness.log("panic", &info);
-        // uncomment to debug
-        // console_error_str(&info);
+        // easier to debug
+        console_error_str(&info);
     }));
 }
 

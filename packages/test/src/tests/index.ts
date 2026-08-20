@@ -58,12 +58,16 @@ const main = () => {
 
     for (const path of logPaths) {
         const log = readLogFile(path);
-        console.log(`=== ${path} ===`);
+        let printed = false;
         for (const test in log.tests) {
             if (!shouldPrintTest(test)) {
                 continue;
             }
             const testLog = log.tests[test];
+            if (!printed) {
+                printed = true;
+                console.log(`=== ${path} ===`);
+            }
             console.log(`[${test}] - ${Math.floor(testLog.duration)}ms`);
             for (const e of testLog.entries) {
                 console.log(e.toString());
