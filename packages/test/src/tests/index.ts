@@ -15,18 +15,18 @@ const main = () => {
     const allEngines = [...NATIVE_ENGINES, ...BROWSER_ENGINES];
     const {
         engines: inputEngines,
-        tripleFilters: quadFilters,
+        tripleFilters,
         testFilters,
     } = parseCommandLineArgs(process.argv.slice(2), allEngines);
     const engines = inputEngines.length ? inputEngines : allEngines;
 
     const logPaths: string[] = [];
-    const shouldRead = (quad: string) => {
-        if (quadFilters.length === 0) {
+    const shouldRead = (triple: string) => {
+        if (tripleFilters.length === 0) {
             return true;
         }
-        for (const filter of quadFilters) {
-            if (!quad.includes(filter)) {
+        for (const filter of tripleFilters) {
+            if (!triple.includes(filter)) {
                 return false;
             }
         }
@@ -41,7 +41,7 @@ const main = () => {
             if (!shouldRead(logName)) {
                 continue;
             }
-            logPaths.push(engine + "/" + logName);
+            logPaths.push(engine + "/" + path.parse(logName).name);
         }
     }
 
@@ -59,11 +59,11 @@ const main = () => {
     for (const path of logPaths) {
         const log = readLogFile(path);
         console.log(`=== ${path} ===`);
-        for (const test in log.testLogMap) {
+        for (const test in log.tests) {
             if (!shouldPrintTest(test)) {
                 continue;
             }
-            const testLog = log.testLogMap[test];
+            const testLog = log.tests[test];
             console.log(`[${test}] - ${Math.floor(testLog.duration)}ms`);
             for (const e of testLog.entries) {
                 console.log(e.toString());

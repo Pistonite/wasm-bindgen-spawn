@@ -2,11 +2,12 @@ import child_process from "node:child_process";
 import path from "node:path";
 
 import {
+    type Engine,
     getTargetDir,
     getTargetTestTriples,
     NATIVE_ENGINES,
     parseCommandLineArgs,
-    type NativeEngine,
+    type Triple,
 } from "#framework";
 
 const main = async () => {
@@ -24,21 +25,44 @@ const main = async () => {
         process.exit(1);
     }
 
-    const failed: string[] = [];
-    // run quad one at a time to avoid overwhelm all cores
+    const tasks: [Engine, Triple][] = [];
     for (const triple of triples) {
-        const results = await Promise.all(
-            engines.map(
-                async (engine) =>
-                    [engine, await runTestForTriple(engine, triple, testFilters)] as const,
-            ),
-        );
-        for (const [engine, ok] of results) {
-            if (!ok) {
-                failed.push(`${engine}/${triple}`);
+        for (const engine of engines) {
+            // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
+            if (engine === "bun") {
+                continue;
             }
+            if (engine === "deno" && triple.endsWith("-nodejs")) {
+                // skip nodejs tests in unsupported engines
+                continue;
+            }
+            if (engine === "node" && triple.endsWith("-deno")) {
+                // skip deno tests in unsupported engines
+                continue;
+            }
+            tasks.push([engine, triple]);
         }
     }
+    const failed: string[] = [];
+
+    const runOne = async (cb: () => void) => {
+        const t = tasks.pop();
+        if (!t) {
+            return cb();
+        }
+        const [engine, triple] = t;
+        const ok = await runTestForTriple(engine, triple, testFilters);
+        if (!ok) {
+            failed.push(`${engine}/${triple}`);
+        }
+        void runOne(cb);
+    };
+
+    const promises = Array.from({ length: navigator.hardwareConcurrency }).map(() => {
+        return new Promise<void>((resolve) => runOne(resolve));
+    });
+    await Promise.all(promises);
+
     if (failed.length) {
         console.error(`failed: ${failed.join(", ")}`);
         process.exit(1);
@@ -47,7 +71,7 @@ const main = async () => {
 };
 
 const runTestForTriple = async (
-    engine: NativeEngine,
+    engine: Engine,
     triple: string,
     testFilters: string[],
 ): Promise<boolean> => {
@@ -84,7 +108,6 @@ const runTestForTriple = async (
         child.stdout.on("data", onData);
         child.stderr.on("data", onData);
         child.on("error", (e) => {
-            // most likely the engine simply isn't installed
             console.error(`${prefix}failed to spawn ${command}: ${e.message}`);
             resolve(false);
         });
@@ -99,7 +122,7 @@ const runTestForTriple = async (
 };
 
 const getEngineCommand = (
-    engine: NativeEngine,
+    engine: Engine,
     script: string,
     triple: string,
     testFilters: string[],
@@ -120,6 +143,8 @@ const getEngineCommand = (
                 triple,
                 ...testFilters,
             ];
+        default:
+            throw new Error("unexpected engine: " + engine);
     }
 };
 

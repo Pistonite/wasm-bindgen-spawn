@@ -23,7 +23,7 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
     it("incremented atomicly", () => {
         expect(afterJoin.length).toBe(1);
         expect(afterJoin[0].isMainThread()).toBe(true);
-        expect(afterJoin[0].payload.sum_after_join).toBe(THREADS);
+        expect(afterJoin[0].payload?.sum_after_join).toBe(THREADS);
     });
 
     it("each thread did a distinct fetch_add", () => {
@@ -46,7 +46,7 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
     it("read the counter before joining, while threads were still running", () => {
         expect(beforeJoin.length).toBe(1);
         expect(beforeJoin[0].isMainThread()).toBe(true);
-        const sum = beforeJoin[0].payload.sum_before_join;
+        const sum = beforeJoin[0].payload?.sum_before_join;
 
         // main reads the counter right after the spawn loop, so it cannot have
         // seen all 30 increments - joining is what makes the count complete.
@@ -61,5 +61,13 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
 
     it("did not panic", () => {
         expect(log.entries.filter((x) => x.panic).length).toBe(0);
+    });
+
+    it("produced correct pooled result", () => {
+        const log = run.getTestLog("example_arc_atomic_pooled");
+        const afterJoin = pickEntries(log.entries, "sum_after_join");
+        expect(afterJoin.length).toBe(1);
+        expect(afterJoin[0].isMainThread()).toBe(true);
+        expect(afterJoin[0].payload?.sum_after_join).toBe(499500);
     });
 });

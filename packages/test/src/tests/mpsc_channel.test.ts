@@ -112,7 +112,7 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
 
     it("received each value after it was sent", () => {
         for (const e of receives) {
-            const sent = findEntry(sends, "thread_sending", e.payload.received);
+            const sent = findEntry(sends, "thread_sending", e.payload?.received as number);
             expect(e.timestamp).toBeGreaterThanOrEqual(sent.timestamp);
         }
     });

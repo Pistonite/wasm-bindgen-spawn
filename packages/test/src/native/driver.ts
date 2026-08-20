@@ -8,9 +8,12 @@ import {
     type ViteWasmBundle,
     type WebWasmBundle,
     type NoModulesWasmBundle,
+    type WasmBundle,
+    getTestSelection,
+    measure,
+    getCurrentEngineName,
+    saveLogFile,
 } from "#framework";
-
-import { runTests } from "./util.ts";
 
 const main = async () => {
     const triple = process.argv[2];
@@ -32,7 +35,7 @@ const main = async () => {
             encoding: "utf8",
         },
     );
-    const [wasm_bindgen, wasmModule] = await importNodeNoModulesWasmBundle(target, triple);
+    const [wasm_bindgen, wasmModule] = await importAndInitWasmBundle(target, triple);
 
     await runTests(
         wasm_bindgen,
@@ -44,7 +47,7 @@ const main = async () => {
     );
 };
 
-const importNodeNoModulesWasmBundle = async (target: string, triple: string) => {
+const importAndInitWasmBundle = async (target: string, triple: string) => {
     const targetBundleDir = getTargetSubdir("bundle");
     switch (target) {
         case "no-modules": {
@@ -91,6 +94,30 @@ const importNodeNoModulesWasmBundle = async (target: string, triple: string) => 
             throw new Error("invalid target: " + target);
         }
     }
+};
+
+const runTests = async (
+    wasm_bindgen: WasmBundle,
+    bgTarget: string,
+    bgScript: string,
+    wasmModule: unknown,
+    triple: string,
+    testFilters: string[],
+) => {
+    const success = await wasm_bindgen.init_thread_creator(bgTarget, bgScript, wasmModule);
+    if (!success) {
+        throw new Error("Failed to init thread creator in WASM!");
+    }
+    const examples = Object.keys(wasm_bindgen).filter((x) => x.startsWith("example_"));
+    for (const testCase of getTestSelection(examples, testFilters)) {
+        measure(testCase, () => {
+            const fn = wasm_bindgen[testCase as keyof typeof wasm_bindgen] as () => void;
+            fn();
+        });
+    }
+    wasm_bindgen.uninit();
+    const log = wasm_bindgen.get_log();
+    saveLogFile(getCurrentEngineName(), triple, log);
 };
 
 void main();

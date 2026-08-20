@@ -4,7 +4,13 @@ import https from "node:https";
 import fs from "node:fs";
 import path from "node:path";
 
-import { getEngineNameFromUserAgent, getPackageRoot, getTargetSubdir } from "#framework";
+import {
+    type Engine,
+    getEngineNameFromUserAgent,
+    getPackageRoot,
+    getTargetSubdir,
+    saveLogFile,
+} from "#framework";
 
 // port for the HTTP server that the browser automation navigates to
 const HTTP_PORT = 3001;
@@ -39,11 +45,8 @@ export const stopHttpServer = async () => {
 };
 
 export const startHttpServer = async (useHttps: boolean): Promise<void> => {
-    // using a queue to prevent partial writes to logs
-    const logQueue = new Map<string, Promise<void>>();
-
     const handler = (req: http.IncomingMessage, res: http.ServerResponse) => {
-        void handleRequest(logQueue, req, res).catch(() => {
+        void handleRequest(req, res).catch(() => {
             // silently ignore errors since it messes up the playwright output
             // console.error("error handling request:", e);
             if (!res.headersSent) {
@@ -125,23 +128,19 @@ const loadCert = (): Cert => {
 };
 
 const QUAD_PATTERN = /^[a-z0-9-]+$/;
-const handleRequest = async (
-    logQueue: Map<string, Promise<void>>,
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-) => {
+const handleRequest = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     const url = new URL(req.url ?? "/", `http://localhost:${HTTP_PORT}`);
     const segments = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-    // GET html/<quad>/index.html
+    // GET html/<triple>/index.html
     // -> serve browser/index.html and let client parse the url
     //    to load the test code accordingly
-    // GET bundle/<quad>/<file>
+    // GET bundle/<triple>/<file>
     // -> serve the bundle file from target/bundle
-    // POST harness/<quad>
+    // POST harness/<triple>
     // -> logging harness
-    const [route, quad, ...rest] = segments;
+    const [route, triple, ...rest] = segments;
 
-    if (!quad || !QUAD_PATTERN.test(quad)) {
+    if (!triple || !QUAD_PATTERN.test(triple)) {
         respond(res, 400, "text/plain", "invalid bundle id");
         return;
     }
@@ -153,7 +152,7 @@ const handleRequest = async (
 
     if (req.method === "GET" && route === "bundle" && rest.length > 0) {
         const targetBundleDir = getTargetSubdir("bundle");
-        const filePath = path.resolve(targetBundleDir, quad, ...rest);
+        const filePath = path.resolve(targetBundleDir, triple, ...rest);
         if (!filePath.startsWith(targetBundleDir + path.sep)) {
             respond(res, 400, "text/plain", "invalid path");
             return;
@@ -168,7 +167,7 @@ const handleRequest = async (
             respond(res, 400, "text/plain", "invalid user-agent");
             return;
         }
-        let engine: string;
+        let engine: Engine;
         try {
             engine = getEngineNameFromUserAgent(ua);
         } catch {
@@ -177,13 +176,7 @@ const handleRequest = async (
             return;
         }
         const body = await readBody(req);
-        const logPath = path.join(getTargetSubdir("test"), engine, `${quad}.log`);
-        const previous = logQueue.get(logPath) ?? Promise.resolve();
-        const next = previous.then(() => fs.promises.appendFile(logPath, body + "\n", "utf8"));
-        logQueue.set(
-            logPath,
-            next.catch(() => {}),
-        );
+        saveLogFile(engine, triple, body);
         res.writeHead(204, COMMON_HEADERS);
         res.end();
         return;

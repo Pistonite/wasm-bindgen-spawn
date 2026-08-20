@@ -14,7 +14,7 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
         for (const e of entries) {
             expect(e.isMainThread()).toBe(true);
             // should spawn in order
-            expect(e.payload.spawning_thread).toBe(i);
+            expect(e.payload?.spawning_thread).toBe(i);
             i++;
         }
     });
@@ -31,12 +31,12 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
             const expectedValue = value * 3;
             if (expectedValue === 6) {
                 if (run.panicRuntime === "unwind") {
-                    expect(e.payload.thread_panic).toBe("hey, I'm 2 (this is a test panic)");
+                    expect(e.payload?.thread_panic).toBe("hey, I'm 2 (this is a test panic)");
                 } else {
-                    expect(e.payload.thread_panic).toMatch(/panicked or aborted!/);
+                    expect(e.payload?.thread_panic).toMatch(/panicked or aborted!/);
                 }
             } else {
-                expect(e.payload.thread_return).toBe(expectedValue);
+                expect(e.payload?.thread_return).toBe(expectedValue);
             }
             value++;
         }
@@ -48,6 +48,6 @@ describe.each(LOG_PATHS)("%s", (logPath) => {
         // the panic message is from the Rust's panic runtime which triggers
         // in both abort and unwind so we will get the actual message regardless
         expect(e.panic?.message).toBe("hey, I'm 2 (this is a test panic)");
-        expect(e.panic?.file).toBe("/example/src/examples/basic.rs");
+        expect(e.panic?.file).toBe("/example/src/examples/join_handle.rs");
     });
 });

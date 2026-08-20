@@ -8,12 +8,12 @@ to spawn WASM threads using web worker and shared memory buffer and atomics.
 
 
 # Step 1: Read the example in Rust
-See packages/example/examples/*.rs, find the test method
+See packages/example/examples/xxxx.rs, find the test method
 `example_xxxx` where xxxx is the test name, understand what the test is doing
 
 # Step 2: Read the logs
 Once you understand what the test is doing, read the logs
-at packages/test/target/test/<engine>/<quad>.log.
+at packages/test/target/test/<engine>/<quad>.json.
 Use the `log` task in that package:
 ```
 task log -- -Ename_of_the_test

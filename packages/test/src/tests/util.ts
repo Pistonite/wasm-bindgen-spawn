@@ -11,19 +11,31 @@ for (const profile of PROFILES) {
     for (const panicRuntime of PANIC_RUNTIMES) {
         for (const target of ["no-modules", "web", "vite"]) {
             for (const engine of BROWSER_ENGINES) {
-                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-${target}.log`);
+                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-${target}`);
             }
             for (const engine of NATIVE_ENGINES) {
-                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-${target}.log`);
+                // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
+                if (engine === "bun") {
+                    continue;
+                }
+                LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-${target}`);
             }
         }
         // nodejs target
         for (const engine of ["node", "bun"]) {
-            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-nodejs.log`);
+            // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
+            if (engine === "bun") {
+                continue;
+            }
+            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-nodejs`);
         }
         // deno target
         for (const engine of ["bun", "deno"]) {
-            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-deno.log`);
+            // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
+            if (engine === "bun") {
+                continue;
+            }
+            LOG_PATHS.push(`${engine}/${profile}-${panicRuntime}-deno`);
         }
     }
 }
@@ -39,7 +51,7 @@ export const pickEntries = (entries: LogEntry[], key: string): LogEntry[] =>
 
 /** Get the `key` payload value of every entry, in order */
 export const pickValues = (entries: LogEntry[], key: string): number[] =>
-    entries.map((x) => x.payload[key]);
+    entries.map((x) => x.payload?.[key]) as number[];
 
 /** Get the only entry whose `key` payload value is `value` */
 export const findEntry = (entries: LogEntry[], key: string, value: number): LogEntry => {
