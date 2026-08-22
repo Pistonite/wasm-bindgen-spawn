@@ -13,11 +13,8 @@ import {
 const main = async () => {
     const { engines, tripleFilters, testFilters } = parseCommandLineArgs(
         process.argv.slice(2),
-        NATIVE_ENGINES,
+        [...NATIVE_ENGINES],
     );
-    if (engines.length === 0) {
-        engines.push(...NATIVE_ENGINES);
-    }
 
     const triples = getTargetTestTriples(tripleFilters, false /* isBrowser */);
     if (!triples.length) {

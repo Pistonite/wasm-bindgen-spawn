@@ -1,9 +1,9 @@
-import { describe, it, expect } from "mono-dev/vitest";
+import { it, expect } from "mono-dev/vitest";
 
-import { readLogFile, type LogEntry } from "#framework";
+import type { LogEntry } from "#framework";
 
 import {
-    LOG_PATHS,
+    describeLogTest,
     entriesFromThread,
     findEntry,
     pickEntries,
@@ -30,10 +30,7 @@ const SLEEP_MAX_MS = 1500;
 const THREADS = 3;
 const SENDS_PER_THREAD = 3;
 
-describe.each(LOG_PATHS)("%s", (logPath) => {
-    const run = readLogFile(logPath);
-    const log = run.getTestLog("example_mpsc_channel");
-
+describeLogTest("example_mpsc_channel", (log, run) => {
     const spawns = pickEntries(log.entries, "spawning_thread");
     const starts = pickEntries(log.entries, "thread_start");
     const sends = pickEntries(log.entries, "thread_sending");

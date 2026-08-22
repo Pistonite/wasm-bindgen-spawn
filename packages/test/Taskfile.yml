@@ -35,11 +35,12 @@ tasks:
     - task: build
     - task: run-native-all
     - task: run-browser-all
-    - task: run-assertion
+    - task: run-assertion-all
 
   run:
     - task: run-native
     - task: run-browser
+    - task: run-assertion
 
   run-native:
     desc: Run native targets using node/bun/deno
@@ -71,12 +72,16 @@ tasks:
     aliases: [assert]
     desc: Run assertions on the logs produced by the tests
     cmds:
-      - task: ecma:test
+      - node src/tests/index.ts {{.CLI_ARGS}}
+
+  run-assertion-all:
+    cmds:
+      - node src/tests/index.ts
 
   log:
     desc: View log dump
     cmds:
-      - node src/tests/index.ts {{.CLI_ARGS}}
+      - node src/log_dump.ts {{.CLI_ARGS}}
 
   clean:
     - rm -rf target build-unwind/target build-abort/target

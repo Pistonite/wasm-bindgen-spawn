@@ -30,5 +30,6 @@ new tests:
   below will probably not be covered in initial release, since they weren't
   in the old version
 
+  - thread_local
   - park/unpack
   - thread::panicking

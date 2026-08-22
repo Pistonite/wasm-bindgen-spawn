@@ -1,12 +1,8 @@
-import { describe, it, expect } from "mono-dev/vitest";
+import { it, expect } from "mono-dev/vitest";
 
-import { readLogFile } from "#framework";
+import { describeLogTest } from "./util.ts";
 
-import { LOG_PATHS } from "./util.ts";
-
-describe.each(LOG_PATHS)("%s", (logPath) => {
-    const run = readLogFile(logPath);
-    const log = run.getTestLog("example_join_handle");
+describeLogTest("example_join_handle", (log, run) => {
     it("spawned 5 threads", () => {
         const entries = log.entries.filter((x) => x.payload?.spawning_thread);
         expect(entries.length).toBe(5);

@@ -93,6 +93,7 @@ export const getTestSelection = (testNames: string[], testFilters: string[]): st
 };
 
 export interface CommandLineArgs<T extends Engine> {
+    skip: boolean;
     engines: T[];
     tripleFilters: string[];
     testFilters: string[];
@@ -100,28 +101,52 @@ export interface CommandLineArgs<T extends Engine> {
 
 export const parseCommandLineArgs = <T extends Engine>(
     args: string[],
-    engines: readonly T[],
+    engines: T[],
 ): CommandLineArgs<T> => {
     const outEngines: T[] = [];
-    const tripleFilters: string[] = [];
+    let tripleFilters: string[] = [];
     const testFilters: string[] = [];
+    let one = false;
+    let hasUnwantedEngine = false;
+
     outer: for (const arg of args) {
-        for (const e of engines) {
+        for (const e of [...NATIVE_ENGINES, ...BROWSER_ENGINES]) {
             if (arg === "--" + e) {
-                outEngines.push(e);
-                continue outer;
+                if (engines.includes(e as T)) {
+                    outEngines.push(e as T);
+                    continue outer;
+                }
+                hasUnwantedEngine = true;
             }
         }
         if (arg.startsWith("-E")) {
             testFilters.push(arg.substring(2));
             continue;
         }
+        if (arg === "--") {
+            continue;
+        }
+        if (arg === "-1") {
+            one = true;
+            continue;
+        }
         tripleFilters.push(arg);
     }
 
+    if (one) {
+        tripleFilters = ["debug-unwind-no-modules"];
+    }
+
+    if (!outEngines.length && hasUnwantedEngine) {
+        return {
+            skip: true, engines: [], tripleFilters, testFilters
+        }
+    }
+
     return {
-        engines: outEngines,
-        tripleFilters: tripleFilters,
+        skip: false,
+        engines: outEngines.length ? outEngines : engines,
+        tripleFilters,
         testFilters,
     };
 };

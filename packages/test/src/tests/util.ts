@@ -1,10 +1,57 @@
+import { describe, it } from "mono-dev/vitest";
+
 import {
     BROWSER_ENGINES,
+    type LogFile,
     NATIVE_ENGINES,
     PANIC_RUNTIMES,
     PROFILES,
     type LogEntry,
+    readLogFile,
+    type TestLog,
 } from "#framework";
+
+export const describeLogTest = (testName: string, testSuiteFn: (log: TestLog, run: LogFile)=>void)  => {
+    const logPaths = (process.env.WBS_VITEST_INPUTS || "").split(",");
+    const testFilters = (process.env.WBS_VITEST_TEST_FILTERS || "").split(",");
+    if (!logPaths.length) {
+        throw new Error("invalid test input; tests must run through the wrapper script!");
+    }
+
+    let run: boolean;
+    if (testFilters.length) {
+        run = false;
+        for (const filter of testFilters) {
+            if (testName.includes(filter)) {
+                run = true;
+                break;
+            }
+        } 
+    } else {
+        run = true;
+    }
+
+    if (!run) {
+        describe.skip(testName, () => {});
+        return;
+    }
+
+    describe.each(logPaths)(`${testName} - %s`, (logPath) => {
+        let run: LogFile;
+        try {
+            run = readLogFile(logPath);
+        } catch(e) {
+            throw new Error("failed to read log: " + logPath, { cause: e });
+        }
+
+        if (testName === "example_arc_atomic" && run.engine === "deno") {
+            it("skips deno due to slow worker", () => {});
+            return;
+        }
+        const log = run.getTestLog(testName)
+        testSuiteFn(log, run);
+    });
+}
 
 export const LOG_PATHS: string[] = [];
 for (const profile of PROFILES) {

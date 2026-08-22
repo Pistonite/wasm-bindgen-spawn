@@ -1,13 +1,9 @@
 import child_process from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
 
 import {
     BROWSER_ENGINES,
     type BrowserEngine,
     getPackageRoot,
-    getTargetSubdir,
-    getTargetTestTriples,
     parseCommandLineArgs,
 } from "#framework";
 
@@ -43,30 +39,24 @@ const main = async () => {
             throw new Error("--https may only be used with --http-only");
         }
 
-        await startHttpServer(useHttps);
         if (httpOnly) {
+            await startHttpServer(useHttps);
             console.log("--http-only: only running http server, kill with ctrl-c");
             return;
         }
 
+        const { skip, engines, tripleFilters, testFilters } = parseCommandLineArgs(
+            process.argv.slice(2),
+            [...BROWSER_ENGINES],
+        );
+        if (skip) {
+            return;
+        }
+
+        await startHttpServer(useHttps);
         await startPlaywrightContainer();
         // ensure things are stabilized
         await new Promise((r) => setTimeout(r, 1000));
-
-        const { engines, tripleFilters, testFilters } = parseCommandLineArgs(
-            process.argv.slice(2),
-            BROWSER_ENGINES,
-        );
-
-        // clean the browser test outputs
-        for (const engine of engines.length ? engines : BROWSER_ENGINES) {
-            const dir = path.join(getTargetSubdir("test"), engine);
-            fs.mkdirSync(dir, { recursive: true });
-            const triples = getTargetTestTriples(tripleFilters, true /* isBrowser */);
-            for (const triple of triples) {
-                fs.rmSync(path.join(dir, triple + ".log"), { force: true });
-            }
-        }
 
         if (!httpOnly) {
             let code: number;
