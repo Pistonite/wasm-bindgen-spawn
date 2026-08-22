@@ -5,6 +5,13 @@ use std::sync::mpsc;
 
 /// ThreadProc is the "main function" for the thread
 ///
+/// Without the wrapper types and trait bounds, it is essentially a:
+/// ```
+/// fn() -> Option<Future<Output=T>>
+/// ```
+///
+///
+///
 /// Explanation from outer to inner:
 ///
 /// ## AssertUnwindSafe
@@ -36,9 +43,62 @@ use std::sync::mpsc;
 /// which can then be driven co-operatively by the JS Event Loop.
 /// This will also work for sync main functions - it will just need to be wrapped
 /// to return future::ready
-pub type ThreadProc = AssertUnwindSafe<Pin<Box<dyn Future<Output = Value> + Send + 'static>>>;
+///
+/// ## Why is the future not `Send`?
+/// The future
+// pub type ThreadProc = AssertUnwindSafe<Box<
+//     dyn FnOnce() -> Option<Pin<Box<dyn Future<Output = Value> + 'static>>> + Send + 'static
+// >>;
+pub type ThreadProc = AssertUnwindSafe<
+    Pin<Box<dyn Future<Output = Value> + Send + 'static>>>
+;
 // ThreadProc itself should just be a fat pointer
 static_assertions::assert_eq_size!(ThreadProc, [*mut (); 2]);
+
+// async fn some_fn_non_send(fetch: js_sys::Function, url: &str) {
+//     use wasm_bindgen::JsCast;
+//
+//     let request = match fetch.call1(&wasm_bindgen::JsValue::undefined(), &url.into()) {
+//         Ok(x) => x,
+//         Err(e) => {
+//             // harness::error(e);
+//             return
+//         }
+//     };
+//     let content_promise = match request.dyn_into::<js_sys::Promise>() {
+//         Ok(x) => x,
+//         Err(e) => return,
+//     };
+//     let content = match content_promise.await {
+//         Ok(x) => x,
+//         Err(e) => return
+//     };
+// }
+// fn test_fn() {
+//     let url = "aaa";
+//     let fetch_text = js_sys::Function::new_with_args("ARG", r"
+//             return (async function(x){
+//                 const response = await fetch(x);
+//                 return await response.text();
+//             })(ARG)");
+//     let f: Box<dyn FnOnce() + Send> = Box::new( || {
+//         async { some_fn_non_send(fetch_text, url).await };
+//        
+//     });
+//     let f2: Box<dyn Future<Output=()> + Send> = Box::new(async move {
+//     let fetch_text = js_sys::Function::new_with_args("ARG", r"
+//             return (async function(x){
+//                 const response = await fetch(x);
+//                 return await response.text();
+//             })(ARG)");
+//         some_fn_non_send(fetch_text, "aaa").await
+//     });
+// }
+// #[cfg(target_feature = "atomics")]
+// static_assertions::assert_impl_all!(wasm_bindgen::JsValue: Send, Sync);
+// static_assertions::assert_impl_all!(js_sys::Promise: Send, Sync);
+// static_assertions::assert_impl_all!(js_sys::futures::JsFuture: Send, Sync);
+
 
 // value channels are used to send thread return values.
 // if one thread panics, the inconsistent state is already

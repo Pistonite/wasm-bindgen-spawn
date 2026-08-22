@@ -23,6 +23,10 @@ const main = () => {
     const engineSet = new Set(engines);
     const logPaths: string[] = [];
     const pushLogPath = (engine: Engine, triple: Triple) => {
+        // bun v1.3.14/v1.4.0 currently has a bug where it seg faults when trying to grow shared memory
+        if (engine === "bun") {
+            return;
+        }
         if (!engineSet.has(engine)) {
             return;
         }
@@ -42,27 +46,15 @@ const main = () => {
                     pushLogPath(engine, `${profile}-${panicRuntime}-${target}`);
                 }
                 for (const engine of NATIVE_ENGINES) {
-                    // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
-                    if (engine === "bun") {
-                        continue;
-                    }
                     pushLogPath(engine, `${profile}-${panicRuntime}-${target}`);
                 }
             }
             // nodejs target
             for (const engine of ["node", "bun"] as const) {
-                // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
-                if (engine === "bun") {
-                    continue;
-                }
                 pushLogPath(engine, `${profile}-${panicRuntime}-nodejs`);
             }
             // deno target
             for (const engine of ["bun", "deno"] as const) {
-                // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
-                if (engine === "bun") {
-                    continue;
-                }
                 pushLogPath(engine, `${profile}-${panicRuntime}-deno`);
             }
         }

@@ -7,8 +7,9 @@ publish = false
 [dependencies]
 js-sys.workspace = true
 wasm-bindgen.workspace = true
+anyhow.workspace = true
 wasm-bindgen-spawn.path = "../lib"
+static_assertions.workspace = true
 
-console_error_panic_hook = "0.1.7"
 [features]
 no-wbg-module = []

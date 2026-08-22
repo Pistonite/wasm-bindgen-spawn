@@ -28,7 +28,7 @@ const main = async () => {
     const tasks: [Engine, Triple][] = [];
     for (const triple of triples) {
         for (const engine of engines) {
-            // bun v1.3.14 currently has a bug where it seg faults when trying to grow shared memory
+            // bun v1.3.14/v1.4.0 currently has a bug where it seg faults when trying to grow shared memory
             if (engine === "bun") {
                 continue;
             }

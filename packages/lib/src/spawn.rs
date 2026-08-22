@@ -338,26 +338,11 @@ where
         dispatcher.clone()
     };
 
-    // since the thread proc is async and driven by JS, Rust aborts
-    // are now impossible to be captured reliably as it requires adding
-    // a catch handler to every promise that could run Rust code.
-    //
-    // unhandledRejection event will also not work because there could be legitimate
-    // JS unhandledRejection that is harmless to Rust.
-    //
-    // The solution here is sending a signal at the end of the future to prove
-    // that none of the .poll() calls caused an abort (which will 'abort' and by definition
-    // stop future .poll calls)
-    // let (proof_send, proof_recv) = util::assert_unwind_safe_oneshot_channel();
     // assert unwind safety here only to work around wasm_bindgen's
     // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
     // See ThreadProc for explanation of the unwind safety model
     let f_boxed: ThreadProc = AssertUnwindSafe(Box::pin(async move {
-        let result = f.await;
-        // let _ = proof_send.0.send(());
-        // when this promise finishes the proof_recv definitely got the signal
-        // if the future didn't abort
-        Box::new(result).into()
+        Box::new(f.await).into()
     }));
     let next_id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
     let (send, recv) = util::assert_unwind_safe_oneshot_channel();

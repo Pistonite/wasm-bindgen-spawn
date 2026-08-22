@@ -36,9 +36,7 @@ __return = (async () => {
             if (
                 // @ts-expect-error Window is not in libwebworker
                 typeof Window === "function" ||
-                typeof WorkerGlobalScope === "function" ||
-                // @ts-expect-error Window is not in libwebworker
-                typeof Bun === "object"
+                typeof WorkerGlobalScope === "function"
             ) {
                 const bgJsExpr = JSON.stringify(bg_js);
                 workerInitArgsExpr = `(async()=>{
@@ -50,10 +48,11 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
                 // note this will not work if the bg_js has relative imports like import foo from "./foo.js";
                 //
                 // note: NodeJS/Deno works with both base64 and chatset=utf-8 data url,
-                // Bun does not work with utf-8, only base64. Additionally Bun as of v1.3.14
-                // cannot handle data urls that are too long. https://github.com/oven-sh/bun/pull/37157
+                // Bun does not work with utf-8, only base64.
                 //
-                // HOWEVER Bun works with blob url so we will use that for now
+                // Additionally Bun as of v1.3.14 cannot handle data urls that are too long.
+                // That is fixed in Bun v1.4.0
+                //
                 // @ts-expect-error Buffer global
                 const encoded = Buffer.from(bg_js).toString("base64");
                 const url = `data:text/javascript;base64,${encoded}`;

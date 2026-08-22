@@ -18,12 +18,6 @@ std
     JoinHandle - no (use this crate)
     LocalKey/thread_local! - yes
 
-old tests:
-  - a lot of threads atomic usize
-  - pooled atomic usize
-  - mutex interlace
-  - mutex poison
-
 new tests:
   - spawn async and try to do something truly async
   - async panic

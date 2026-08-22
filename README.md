@@ -101,3 +101,4 @@ web worker, this include:
 The [example](https://github.com/Pistonite/wasm-bindgen-spawn/tree/main/example) shows how to put the WASM module in the worker. You can
 then use some kind of RPC with `postMessage` to communicate between the main thread and the worker.
 This is probably something you have to do anyway to avoid the heavy, multithreaded computation freezing the UI.
+https://bun.report/1.4.0/la134cbb9agzBggogC2+s5qEyis5qEu5ll4E2is33EwxjqwB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB21n3wB_qisowBA2AQ
