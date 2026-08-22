@@ -85,8 +85,8 @@ compile_error!(
 
 mod spawn;
 pub use spawn::{
-    SpawnError, ThreadDispatcherInit, init_bg_no_modules, init_bg_web, spawn, spawn_future,
-    terminate_dispatcher, try_spawn, try_spawn_future,
+    SpawnError, ThreadDispatcherInit, init_bg_no_modules, init_bg_web, spawn, spawn_async,
+    terminate_dispatcher, try_spawn, try_spawn_async,
 };
 mod join;
 pub use join::JoinHandle;

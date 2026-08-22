@@ -18,7 +18,9 @@ import {
 const main = async () => {
     const triple = process.argv[2];
     if (!triple) {
-        throw new Error("invalid triple, usage: node <driver_script>.ts <quad> <test_filters>...");
+        throw new Error(
+            "invalid triple, usage: node <driver_script>.ts <triple> <test_filters>...",
+        );
     }
     const [profile, panicRuntime] = triple.split("-", 2);
     const prefix = `${profile}-${panicRuntime}`;

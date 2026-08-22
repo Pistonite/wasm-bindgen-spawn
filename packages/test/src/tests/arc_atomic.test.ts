@@ -19,8 +19,8 @@ describeLogTest("example_arc_atomic", (log) => {
 
     it("each thread did a distinct fetch_add", () => {
         expect(increments.length).toBe(THREADS);
-        const values = pickValues(increments, "prev");
-        expect(values.slice().sort((a, b) => a - b)).toEqual(
+        const values = pickValues<number>(increments, "prev");
+        expect(values.toSorted((a, b) => a - b)).toEqual(
             Array.from({ length: THREADS }, (_, i) => i),
         );
     });
@@ -51,6 +51,6 @@ describeLogTest("example_arc_atomic", (log) => {
     });
 
     it("did not panic", () => {
-        expect(log.entries.filter((x) => x.panic).length).toBe(0);
+        expect(log.panics()).toHaveLength(0);
     });
 });

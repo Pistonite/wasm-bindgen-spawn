@@ -6,31 +6,13 @@ use std::sync::mpsc;
 /// ThreadProc is the "main function" for the thread
 ///
 /// Without the wrapper types and trait bounds, it is essentially a:
+/// ```rust,ignore
+/// impl FnOnce() -> Future<Output=T>
 /// ```
-/// fn() -> Option<Future<Output=T>>
-/// ```
 ///
+/// .. which is a function executed on the worker thread that returns a value as a future.
 ///
-///
-/// Explanation from outer to inner:
-///
-/// ## AssertUnwindSafe
-/// The wrapper exists to workaround wasm_bindgen's limitation that anything crossing the
-/// JS-Rust boundary needs to be UnwindSafe.
-///
-/// The UnwindSafe trait does not have additional guarantees, it is only a warning to mark
-/// potentially-inconsistent state is not easily observed by caller.
-///
-/// In the threading model, the Send trait requirement from spawn already ensures that any
-/// owned value is moved to the thread and not observable by the spawner, and shared value
-/// is guarded by types like Mutex that has other mechanism (i.e. poisoning) to observe panics.
-/// Therefore we have a similar case to std::thread::spawn which also does not require UnwindSafe
-///
-/// ## Pin<Box<..>>
-/// This is the pattern to box a future, as future may contain stack reference it needs to be
-/// pinned.
-///
-/// ## Why is it a future
+/// ## Why does it return a future?
 /// If the thread's "main function" is sync Rust, the JS Event Loop is blocked
 /// for the duration the thread is running. This means the thread essentially cannot
 /// do anything async in JS (for example using js_sys/web_sys).
@@ -44,61 +26,62 @@ use std::sync::mpsc;
 /// This will also work for sync main functions - it will just need to be wrapped
 /// to return future::ready
 ///
-/// ## Why is the future not `Send`?
-/// The future
-// pub type ThreadProc = AssertUnwindSafe<Box<
-//     dyn FnOnce() -> Option<Pin<Box<dyn Future<Output = Value> + 'static>>> + Send + 'static
-// >>;
+/// ## Why does the future not need to be `Send`?
+/// If we add the trait bounds, the signature becomes
+/// ```rust,ignore
+/// impl FnOnce() -> ( Future<Output=T> + 'static ) + 'static where T: Send + 'static
+/// ```
+/// Note that both the `FnOnce` and the return value `T` need to be `Send`, but not the future
+/// itself.
+///
+/// This is because in `wasm_bindgen`, JS Values are references to objects on a "heap" managed
+/// by `wasm_bindgen`. As they are JS objects that are only valid in the current JS context,
+/// attempting to dereference them in another JS context will cause disaster.
+///
+/// If we require the future to be `Send`, the benefit is that async threads don't need the
+/// `FnOnce` wrapper - they can just take in a future from the caller. However, for a future
+/// to be `Send`, values that are not `Send` cannot be used across `await`s. This is because
+/// a `Send` future means the future can be sent to execute on any thread at any time, not just
+/// the beginning. This will cause major interoperability issue with JS.
+///
+/// However, once the future is spawned, the future is only ever executed on the JS context it
+/// is spawned in - so it does not require `Send`. On the other hand, values captured by the
+/// thread are actually "sent" to that thread, so the `FnOnce` requires `Send`. Essentially,
+/// this guarantees:
+///
+/// - No `JsValue` (or anything that is not `Send`) are passed from one thread to another.
+/// - Once the thread spawns, new `JsValue`s created on the current thread can be freely used
+///   within the future.
+///
+/// ## Unwind safety
+/// Now we can go a step further rewriting the type closer to its actual form
+/// ```rust,ignore
+/// type ThreadProc = AssertUnwindSafe<
+///     Box<
+///         dyn FnOnce -> Pin<Box<dyn Future<Output=T> + 'static>> + Send + 'static
+///     >
+/// >;
+/// ```
+/// The only differences are:
+/// - Now instead of pseudo code for `FnOnce` and `Future`, we put in the real, boxed form
+/// - The whole thing is wrapped in `AssertUnwindSafe`.
+///
+/// The UnwindSafe trait does not have additional guarantees, it is only a warning to mark
+/// potentially-inconsistent state is not easily observed by caller.
+///
+/// In the threading model, the `Send` trait requirement from spawn already ensures that any
+/// owned value is moved to the thread and not observable by the spawner, and shared value
+/// is guarded by types like `Mutex` that has other mechanism (i.e. poisoning) to observe panics.
+/// Therefore we have a similar case to `std::thread::spawn` which also does not require
+/// `UnwindSafe`.
+///
+/// The `AssertUnwindSafe` wrapper exists in the type to workaround `wasm_bindgen`'s limitation
+/// that anything crossing the JS-Rust boundary needs to be UnwindSafe when `panic=unwind`.
 pub type ThreadProc = AssertUnwindSafe<
-    Pin<Box<dyn Future<Output = Value> + Send + 'static>>>
-;
+    Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = Value> + 'static>> + Send + 'static>,
+>;
 // ThreadProc itself should just be a fat pointer
 static_assertions::assert_eq_size!(ThreadProc, [*mut (); 2]);
-
-// async fn some_fn_non_send(fetch: js_sys::Function, url: &str) {
-//     use wasm_bindgen::JsCast;
-//
-//     let request = match fetch.call1(&wasm_bindgen::JsValue::undefined(), &url.into()) {
-//         Ok(x) => x,
-//         Err(e) => {
-//             // harness::error(e);
-//             return
-//         }
-//     };
-//     let content_promise = match request.dyn_into::<js_sys::Promise>() {
-//         Ok(x) => x,
-//         Err(e) => return,
-//     };
-//     let content = match content_promise.await {
-//         Ok(x) => x,
-//         Err(e) => return
-//     };
-// }
-// fn test_fn() {
-//     let url = "aaa";
-//     let fetch_text = js_sys::Function::new_with_args("ARG", r"
-//             return (async function(x){
-//                 const response = await fetch(x);
-//                 return await response.text();
-//             })(ARG)");
-//     let f: Box<dyn FnOnce() + Send> = Box::new( || {
-//         async { some_fn_non_send(fetch_text, url).await };
-//        
-//     });
-//     let f2: Box<dyn Future<Output=()> + Send> = Box::new(async move {
-//     let fetch_text = js_sys::Function::new_with_args("ARG", r"
-//             return (async function(x){
-//                 const response = await fetch(x);
-//                 return await response.text();
-//             })(ARG)");
-//         some_fn_non_send(fetch_text, "aaa").await
-//     });
-// }
-// #[cfg(target_feature = "atomics")]
-// static_assertions::assert_impl_all!(wasm_bindgen::JsValue: Send, Sync);
-// static_assertions::assert_impl_all!(js_sys::Promise: Send, Sync);
-// static_assertions::assert_impl_all!(js_sys::futures::JsFuture: Send, Sync);
-
 
 // value channels are used to send thread return values.
 // if one thread panics, the inconsistent state is already

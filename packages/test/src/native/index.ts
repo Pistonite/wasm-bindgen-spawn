@@ -139,6 +139,7 @@ const getEngineCommand = (
                 "deno",
                 "--allow-read=" + targetDir,
                 "--allow-write=" + targetDir,
+                "--allow-net=raw.githubusercontent.com",
                 script,
                 triple,
                 ...testFilters,

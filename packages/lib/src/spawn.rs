@@ -278,7 +278,18 @@ where
     F: FnOnce() -> T + Send + 'static,
     T: Send + 'static,
 {
-    try_spawn_impl(async move { f() })
+    // assert unwind safety here only to work around wasm_bindgen's
+    // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
+    // See ThreadProc for explanation of the unwind safety model
+    let f_boxed: ThreadProc = AssertUnwindSafe(Box::new(move || {
+        // execute the main function to create the value
+        let value = f();
+        // wrap the future to return the boxed value with type erased
+        let wrapped_f = async move { Box::new(value).into() };
+        // return the wrapped future pinned to satisfy the type
+        Box::pin(wrapped_f)
+    }));
+    spawn_impl(f_boxed)
 }
 
 /// Spawn a new thread that uses the JS Event Loop to drive a future.
@@ -294,35 +305,50 @@ where
 /// # Panic
 /// Similar to [`std::thread::spawn`], this function may panic if the thread creation fails,
 /// including if the thread dispatcher has not been initialized (see [`ThreadDispatcherInit`]).
-/// Use [`try_spawn_future`] as the recoverable version.
+/// Use [`try_spawn_async`] as the recoverable version.
 #[inline(always)]
-pub fn spawn_future<F, T>(f: F) -> JoinHandle<T>
+pub fn spawn_async<TFn, TFuture, T>(f: TFn) -> JoinHandle<T>
 where
-    F: Future<Output = T> + Send + 'static,
+    TFn: FnOnce() -> TFuture + Send + 'static,
+    TFuture: Future<Output = T> + 'static,
     T: Send + 'static,
 {
-    match try_spawn_impl(f) {
+    match try_spawn_async(f) {
         Ok(x) => x,
         Err(e) => panic!("Failed to spawn thread with wasm-bindgen-spawn: {e}"),
     }
 }
 
-/// Same as [`spawn_future`] but captures thread creation failure.
+/// Same as [`spawn_async`] but captures thread creation failure.
 #[inline(always)]
-pub fn try_spawn_future<F, T>(f: F) -> Result<JoinHandle<T>, SpawnError>
+pub fn try_spawn_async<TFn, TFuture, T>(f: TFn) -> Result<JoinHandle<T>, SpawnError>
 where
-    F: Future<Output = T> + Send + 'static,
+    TFn: FnOnce() -> TFuture + Send + 'static,
+    TFuture: Future<Output = T> + 'static,
     T: Send + 'static,
 {
-    try_spawn_impl(f)
+    // assert unwind safety here only to work around wasm_bindgen's
+    // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
+    // See ThreadProc for explanation of the unwind safety model
+    let f_boxed: ThreadProc = AssertUnwindSafe(Box::new(move || {
+        // execute the main function to create the future
+        let fut = f();
+        // wrap the future to return the boxed value with type erased
+        let wrapped_f = async move {
+            let value = fut.await;
+            Box::new(value).into()
+        };
+        // return the wrapped future pinned to satisfy the type
+        Box::pin(wrapped_f)
+    }));
+    spawn_impl(f_boxed)
 }
 
 /// Spawn a new thread to execute F. Note that spawning a new thread is very
 /// expensive, as it requires spinning up a new Worker in JS and waiting for it to be ready
 /// to accept the closure `F`. Pool the threads if you can.
-fn try_spawn_impl<F, T>(f: F) -> Result<JoinHandle<T>, SpawnError>
+fn spawn_impl<T>(f: ThreadProc) -> Result<JoinHandle<T>, SpawnError>
 where
-    F: Future<Output = T> + Send + 'static,
     T: Send + 'static,
 {
     let dispatcher = {
@@ -338,16 +364,16 @@ where
         dispatcher.clone()
     };
 
-    // assert unwind safety here only to work around wasm_bindgen's
-    // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
-    // See ThreadProc for explanation of the unwind safety model
-    let f_boxed: ThreadProc = AssertUnwindSafe(Box::pin(async move {
-        Box::new(f.await).into()
-    }));
+    // // assert unwind safety here only to work around wasm_bindgen's
+    // // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
+    // // See ThreadProc for explanation of the unwind safety model
+    // let f_boxed: ThreadProc = AssertUnwindSafe(Box::pin(async move {
+    //     Box::new(f.await).into()
+    // }));
     let next_id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
     let (send, recv) = util::assert_unwind_safe_oneshot_channel();
     dispatcher
-        .send((f_boxed, send))
+        .send((f, send))
         .map_err(|_| SpawnError::Disconnected)?;
     Ok(JoinHandle::new(next_id, recv))
 }

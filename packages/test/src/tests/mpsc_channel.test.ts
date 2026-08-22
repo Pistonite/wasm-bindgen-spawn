@@ -60,7 +60,7 @@ describeLogTest("example_mpsc_channel", (log, run) => {
         expect(starts.length).toBe(THREADS);
         // note we sort here - the threads are spawned in order, but which one
         // wins the race to start first is up to the engine
-        expect(pickValues(starts, "thread_start").sort((a, b) => a - b)).toEqual([0, 1, 2]);
+        expect(pickValues<number>(starts, "thread_start").sort((a, b) => a - b)).toEqual([0, 1, 2]);
 
         // each thread must be a distinct worker, and none of them the main thread
         expect(new Set(starts.map((x) => x.thread)).size).toBe(THREADS);
@@ -90,7 +90,7 @@ describeLogTest("example_mpsc_channel", (log, run) => {
         for (const e of receives) {
             expect(e.isMainThread()).toBe(true);
         }
-        const values = pickValues(receives, "received");
+        const values = pickValues<number>(receives, "received");
         expect(values.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
     });
 
@@ -100,7 +100,7 @@ describeLogTest("example_mpsc_channel", (log, run) => {
         // *before* the actual send, so two threads sending at the same time can
         // log in one order and enqueue in the other - which msedge really does.
         for (let i = 0; i < THREADS; i++) {
-            const values = pickValues(receives, "received").filter(
+            const values = pickValues<number>(receives, "received").filter(
                 (x) => Math.floor(x / SENDS_PER_THREAD) === i,
             );
             expect(values).toEqual(payloadsOf(i));

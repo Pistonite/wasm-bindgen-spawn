@@ -178,10 +178,21 @@ export interface LogFile {
     getTestLog(test: string): TestLog;
 }
 
-export interface TestLog {
-    duration: number;
-    entries: LogEntry[];
+export class TestLog {
+    public duration: number;
+    public entries: LogEntry[];
+    constructor(duration: number, entries: LogEntry[]) {
+        this.duration = duration;
+        this.entries = entries;
+    }
+    public panics() {
+        return this.entries.filter((e) => e.panic) as (LogEntry & {
+            panic: PanicInfo;
+            payload: undefined;
+        })[];
+    }
 }
+
 export interface LogEntry {
     /* Test case local timestamp */
     timestamp: number;
@@ -218,10 +229,7 @@ class LogFileImpl implements LogFile {
             const entries = test.entries.map((x) =>
                 parseLogEntry(x, test.startTimestamp, test.mainThreadId),
             );
-            this.tests[testName] = {
-                duration: test.duration,
-                entries,
-            };
+            this.tests[testName] = new TestLog(test.duration, entries);
         }
     }
 

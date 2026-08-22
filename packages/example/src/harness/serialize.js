@@ -1,4 +1,4 @@
-const [payload, type, thread] = ARG;
+let [payload, type, thread] = ARG;
 if (payload instanceof Error) {
     if ("message" in payload) {
         payload = payload.message;

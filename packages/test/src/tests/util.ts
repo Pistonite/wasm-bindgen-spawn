@@ -1,11 +1,6 @@
 import { describe, it } from "mono-dev/vitest";
 
-import {
-    type LogFile,
-    type LogEntry,
-    readLogFile,
-    type TestLog,
-} from "#framework";
+import { type LogFile, type LogEntry, readLogFile, type TestLog } from "#framework";
 
 export const describeLogTest = (
     testName: string,
@@ -64,8 +59,8 @@ export const pickEntries = (entries: LogEntry[], key: string): LogEntry[] =>
     entries.filter((x) => x.payload && key in x.payload);
 
 /** Get the `key` payload value of every entry, in order */
-export const pickValues = (entries: LogEntry[], key: string): number[] =>
-    entries.map((x) => x.payload?.[key]) as number[];
+export const pickValues = <T>(entries: LogEntry[], key: string): T[] =>
+    entries.map((x) => x.payload?.[key]) as T[];
 
 /** Get the only entry whose `key` payload value is `value` */
 export const findEntry = (entries: LogEntry[], key: string, value: number): LogEntry => {

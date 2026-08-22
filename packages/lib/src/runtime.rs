@@ -25,14 +25,23 @@ pub fn thread_main(proc: Box<ThreadProc>, terminate_fn: Function, sender: ValueS
 
     // Enter JS realm
     let promise = js_sys::futures::future_to_promise(async move {
-        // this will handle any panic that happened while driving the main future
+        // run the main future locally and handle any panic that happened
+        // while driving the main future.
+        //
         // It does not handle panics that happen in async tasks spawned
         // that are unrelated to this future. This means it's possible
         // for the .await in the below blocks to never return.
         // For those cases the downstream must call spawn_local from this crate
         // to ensure they connect to the thread's runtime
-        let wrapped_proc = CatchPanicAndUnwind { f: proc };
-        let result = wrapped_proc.await;
+        let wrapped_fut = CatchPanicAndUnwind {
+            f: async move {
+                // run the synchronous part to get a future
+                let fut = proc();
+                // run the future
+                fut.await
+            },
+        };
+        let result = AssertUnwindSafe(wrapped_fut).await;
 
         terminate_with_result(result);
 
