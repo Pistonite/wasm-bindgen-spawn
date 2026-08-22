@@ -47,6 +47,7 @@ static_assertions::assert_eq_size!(ThreadProc, [*mut (); 2]);
 pub type WorkerResult = Result<Value, WorkerPanic>;
 pub type ValueSender = AssertUnwindSafe<oneshot::Sender<WorkerResult>>;
 pub type ValueReceiver = AssertUnwindSafe<oneshot::Receiver<WorkerResult>>;
+pub type ValueReceiverAsync = oneshot::AsyncReceiver<WorkerResult>;
 
 // the thread dispatch payload is the main function and the channel to send
 // the result back

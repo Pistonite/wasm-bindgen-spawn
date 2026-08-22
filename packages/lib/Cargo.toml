@@ -21,8 +21,6 @@ include = [
 [dependencies]
 js-sys.workspace = true
 wasm-bindgen.workspace = true
-oneshot = { workspace = true, features = ["std"] }
+oneshot = { workspace = true, features = ["std", "async"] }
 static_assertions.workspace = true
 thiserror.workspace = true
-futures-util.workspace = true
-pin-project.workspace = true

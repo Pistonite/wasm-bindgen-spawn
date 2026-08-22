@@ -59,12 +59,18 @@ const main = async () => {
         await new Promise((r) => setTimeout(r, 1000));
 
         if (!httpOnly) {
-            let code: number;
+            let code: number = 1;
             try {
-                code = await runPlaywright(engines, tripleFilters, testFilters);
+                code = 0;
+                for (const engine of engines) {
+                    code = await runPlaywright(engine, tripleFilters, testFilters);
+                    if (code !== 0) {
+                        break;
+                    }
+                }
             } finally {
                 // wait for a bit to ensure log files are completely flushed
-                await new Promise((r) => setTimeout(r, 1000));
+                // await new Promise((r) => setTimeout(r, 1000));
                 await cleanup();
             }
 
@@ -81,19 +87,18 @@ const main = async () => {
 };
 
 const runPlaywright = async (
-    engines: BrowserEngine[],
+    engine: BrowserEngine,
     tripleFilters: string[],
     testFilters: string[],
 ): Promise<number> => {
     const cli = getPlaywrightCli();
-    console.log("launching playwright");
-    const engineFlags = engines.map((e) => `--project=${e}`);
+    console.log("launching playwright for engine: " + engine);
     return await new Promise<number>((resolve) => {
         const child = child_process.spawn(
             // same node that's running the orchestrator, so the test run can't
             // end up on a different version than the one we're launched with
             process.execPath,
-            [cli, "test", ...engineFlags],
+            [cli, "test", `--project=${engine}`],
             {
                 stdio: "inherit",
                 cwd: getPackageRoot(),

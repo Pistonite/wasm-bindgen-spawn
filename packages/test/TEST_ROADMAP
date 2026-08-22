@@ -26,6 +26,7 @@ old tests:
 
 new tests:
   - spawn async and try to do something truly async
+  - async panic
 
   below will probably not be covered in initial release, since they weren't
   in the old version

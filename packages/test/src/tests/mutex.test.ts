@@ -30,11 +30,9 @@ const MIN_SHARE_OF_SAMPLE = 30;
 const MIN_HANDOFFS = 50;
 
 describeLogTest("example_mutex", (log) => {
-
     const length = only(log.entries, "vec_length").payload?.vec_length as number;
     const pos = only(log.entries, "interleave_pos").payload?.interleave_pos as number;
-    const sample = only(log.entries, "interleave_sample").payload
-        ?.interleave_sample as number[];
+    const sample = only(log.entries, "interleave_sample").payload?.interleave_sample as number[];
 
     it("logged correct length", () => {
         expect(length).toBe(THREADS * COUNT);

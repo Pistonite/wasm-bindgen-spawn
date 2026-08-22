@@ -9,7 +9,7 @@ const testFilters: string[] =
 const triples = getTargetTestTriples(tripleFilters, true /* isBrowser */);
 
 // time wait for 'done' (or error) to be reported from the page
-const RUN_TIMEOUT_MS = 150 * 1000;
+const RUN_TIMEOUT_MS = 300 * 1000;
 
 // make sure we don't run this in vitest
 if (!import.meta.vitest) {

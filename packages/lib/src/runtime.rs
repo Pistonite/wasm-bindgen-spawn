@@ -3,7 +3,6 @@ use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use futures_util::FutureExt;
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::Closure;
@@ -32,24 +31,8 @@ pub fn thread_main(proc: Box<ThreadProc>, terminate_fn: Function, sender: ValueS
         // for the .await in the below blocks to never return.
         // For those cases the downstream must call spawn_local from this crate
         // to ensure they connect to the thread's runtime
-        let result = if cfg!(panic = "unwind") {
-            let onion = TryCatch {
-                f: proc.catch_unwind(),
-            };
-            match onion.await {
-                None => Err(WorkerPanic { payload: None }),
-                Some(Err(panic)) => Err(WorkerPanic {
-                    payload: Some(panic),
-                }),
-                Some(Ok(value)) => Ok(value),
-            }
-        } else {
-            let onion = TryCatch { f: proc };
-            match onion.await {
-                None => Err(WorkerPanic { payload: None }),
-                Some(value) => Ok(value),
-            }
-        };
+        let wrapped_proc = CatchPanicAndUnwind { f: proc };
+        let result = wrapped_proc.await;
 
         terminate_with_result(result);
 
@@ -75,27 +58,8 @@ where
     F: Future<Output = ()> + 'static,
 {
     js_sys::futures::spawn_local(async move {
-        let result = if cfg!(panic = "unwind") {
-            let onion = TryCatch {
-                f: AssertUnwindSafe(future).catch_unwind(),
-            };
-            match onion.await {
-                None => Some(WorkerPanic { payload: None }),
-                Some(Err(panic)) => Some(WorkerPanic {
-                    payload: Some(panic),
-                }),
-                Some(Ok(())) => None,
-            }
-        } else {
-            let onion = TryCatch {
-                f: AssertUnwindSafe(future),
-            };
-            match onion.await {
-                None => Some(WorkerPanic { payload: None }),
-                Some(()) => None,
-            }
-        };
-        if let Some(e) = result {
+        let future_wrapped = CatchPanicAndUnwind { f: future };
+        if let Err(e) = future_wrapped.await {
             terminate_with_result(Err(e));
         }
     });
@@ -148,17 +112,15 @@ impl Terminator {
 /// https://github.com/wasm-bindgen/wasm-bindgen/issues/2392#issuecomment-758892311
 ///
 /// This is similar to catch_unwind in futures-util, except it wraps each poll
-/// with a JS try-catch instead of std::panic::catch_unwind
-#[pin_project::pin_project]
-struct TryCatch<F: ?Sized> {
-    #[pin]
+/// with a JS try-catch and std::panic::catch_unwind (if panic=unwind)
+struct CatchPanicAndUnwind<F: ?Sized> {
     f: F,
 }
-impl<F: ?Sized> Future for TryCatch<F>
+impl<F: ?Sized> Future for CatchPanicAndUnwind<F>
 where
     F: Future,
 {
-    type Output = Option<F::Output>;
+    type Output = Result<F::Output, WorkerPanic>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // since we are a library and there's no good way to "include custom JS"
@@ -169,7 +131,18 @@ where
         // Send/Sync, storing the function will make the enture future not Send
         let try_catch: Function = Function::new_with_args("x", "try{x()}catch{}");
         // need this wrapper because Closure::borror_mut only takes FnMut and not FnOnce
-        let mut f = Some(|| self.project().f.poll(cx));
+        let mut f = Some(|| {
+            // safety: f is pinned while self is
+            let f = unsafe { self.map_unchecked_mut(|s| &mut s.f) };
+            if cfg!(panic = "unwind") {
+                match std::panic::catch_unwind(AssertUnwindSafe(|| f.poll(cx))) {
+                    Ok(x) => Ok(x),
+                    Err(e) => Err(WorkerPanic { payload: Some(e) }),
+                }
+            } else {
+                Ok(f.poll(cx))
+            }
+        });
         let o = RefCell::new(None);
         let mut closure = AssertUnwindSafe(|| {
             // make sure we first execute the function (which may panic)
@@ -183,9 +156,10 @@ where
         // if we got a value
         let _ = try_catch.call1(&JsValue::undefined(), c.as_js_value());
         match o.take() {
-            Some(Poll::Ready(t)) => Poll::Ready(Some(t)),
-            Some(Poll::Pending) => Poll::Pending,
-            None => Poll::Ready(None),
+            Some(Ok(Poll::Ready(t))) => Poll::Ready(Ok(t)),
+            Some(Ok(Poll::Pending)) => Poll::Pending,
+            Some(Err(panic)) => Poll::Ready(Err(panic)),
+            None => Poll::Ready(Err(WorkerPanic { payload: None })),
         }
     }
 }

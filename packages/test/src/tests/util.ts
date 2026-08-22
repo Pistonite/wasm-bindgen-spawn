@@ -11,7 +11,10 @@ import {
     type TestLog,
 } from "#framework";
 
-export const describeLogTest = (testName: string, testSuiteFn: (log: TestLog, run: LogFile)=>void)  => {
+export const describeLogTest = (
+    testName: string,
+    testSuiteFn: (log: TestLog, run: LogFile) => void,
+) => {
     const logPaths = (process.env.WBS_VITEST_INPUTS || "").split(",");
     const testFilters = (process.env.WBS_VITEST_TEST_FILTERS || "").split(",");
     if (!logPaths.length) {
@@ -26,7 +29,7 @@ export const describeLogTest = (testName: string, testSuiteFn: (log: TestLog, ru
                 run = true;
                 break;
             }
-        } 
+        }
     } else {
         run = true;
     }
@@ -40,7 +43,7 @@ export const describeLogTest = (testName: string, testSuiteFn: (log: TestLog, ru
         let run: LogFile;
         try {
             run = readLogFile(logPath);
-        } catch(e) {
+        } catch (e) {
             throw new Error("failed to read log: " + logPath, { cause: e });
         }
 
@@ -48,10 +51,10 @@ export const describeLogTest = (testName: string, testSuiteFn: (log: TestLog, ru
             it("skips deno due to slow worker", () => {});
             return;
         }
-        const log = run.getTestLog(testName)
+        const log = run.getTestLog(testName);
         testSuiteFn(log, run);
     });
-}
+};
 
 export const LOG_PATHS: string[] = [];
 for (const profile of PROFILES) {

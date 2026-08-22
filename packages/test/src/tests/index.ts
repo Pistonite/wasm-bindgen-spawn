@@ -1,7 +1,16 @@
 import child_process from "node:child_process";
 import path from "node:path";
 
-import { BROWSER_ENGINES, type Engine, getPackageRoot, NATIVE_ENGINES, PANIC_RUNTIMES, parseCommandLineArgs, PROFILES, type Triple } from "#framework";
+import {
+    BROWSER_ENGINES,
+    type Engine,
+    getPackageRoot,
+    NATIVE_ENGINES,
+    PANIC_RUNTIMES,
+    parseCommandLineArgs,
+    PROFILES,
+    type Triple,
+} from "#framework";
 
 const main = () => {
     const { skip, engines, tripleFilters, testFilters } = parseCommandLineArgs(
@@ -73,13 +82,13 @@ const main = () => {
         env: {
             PATH: process.env.PATH,
             WBS_VITEST_INPUTS: logPaths.join(","),
-            WBS_VITEST_TEST_FILTERS: testFilters.join(",")
-        }
+            WBS_VITEST_TEST_FILTERS: testFilters.join(","),
+        },
     });
     if (result.error) {
         throw result.error;
     }
     process.exit(result.status);
-}
+};
 
 main();

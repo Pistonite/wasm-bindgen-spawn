@@ -139,8 +139,11 @@ export const parseCommandLineArgs = <T extends Engine>(
 
     if (!outEngines.length && hasUnwantedEngine) {
         return {
-            skip: true, engines: [], tripleFilters, testFilters
-        }
+            skip: true,
+            engines: [],
+            tripleFilters,
+            testFilters,
+        };
     }
 
     return {
