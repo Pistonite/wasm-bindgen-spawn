@@ -1,0 +1,64 @@
+.console-row {
+    display: flex;
+    align-items: baseline;
+    padding: 3px 16px;
+    font-family: var(--font-mono);
+    /* font-size: 13px; */
+    font-weight: 400;
+    line-height: 1.5;
+    gap: 10px;
+    transition: background-color var(--hover-transition);
+}
+
+.console-row:hover {
+    background-color: var(--base);
+}
+
+/* sits inline at the head of the message, so plain logs don't leave a gap */
+.badge {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 0 6px;
+    border-radius: 4px;
+    color: var(--crust);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* test names are already lowercase identifiers, don't shout them */
+.badge-test {
+    background-color: var(--lavender);
+    text-transform: none;
+}
+
+.badge-error {
+    background-color: var(--red);
+}
+
+.badge-panic {
+    background-color: var(--peach);
+}
+
+.thread-id {
+    flex: none;
+    min-width: 100px;
+    text-align: right;
+    color: var(--blue);
+}
+
+.thread-id-harness {
+    color: var(--subtext0);
+}
+
+.thread-id-main {
+    color: var(--lavender);
+}
+
+.console-message {
+    flex: 1;
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

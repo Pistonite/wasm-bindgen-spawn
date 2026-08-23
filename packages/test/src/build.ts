@@ -413,7 +413,7 @@ export default defineConfig({
 };
 
 const getCargoProjectDir = (panicRuntime: PanicRuntime): string => {
-    return path.resolve(import.meta.dirname, `../build-${panicRuntime}`);
+    return path.resolve(import.meta.dirname, `../../build-${panicRuntime}`);
 };
 
 const getTargetDir = (): string => {

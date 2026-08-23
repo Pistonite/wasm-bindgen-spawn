@@ -1,0 +1,38 @@
+.console {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+
+.console-bar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--surface0);
+    background-color: var(--mantle);
+    gap: 10px;
+}
+
+.console-count {
+    flex: 1;
+    color: var(--overlay0);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.console-output {
+    flex: 1;
+    padding: 8px 0;
+    background-color: var(--crust);
+    overflow-y: auto;
+}
+
+.console-empty {
+    margin: 0;
+    padding: 8px 16px;
+    color: var(--subtext0);
+    font-style: italic;
+}

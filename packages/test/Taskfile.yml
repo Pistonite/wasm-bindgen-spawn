@@ -13,11 +13,6 @@ includes:
 
 
 tasks:
-  install:
-    - pnpm install
-    - pnpm exec playwright install
-    - sudo pnpm exec playwright install-deps
-
   build:
     desc: Build files needed for tests
     cmds:

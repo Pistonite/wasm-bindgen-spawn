@@ -1,0 +1,30 @@
+.status-bar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    font-size: 12px;
+    gap: 16px;
+}
+
+.status-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.status-label {
+    color: var(--subtext0);
+}
+
+.status-value {
+    font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+.status-ok {
+    color: var(--green);
+}
+
+.status-bad {
+    color: var(--red);
+}

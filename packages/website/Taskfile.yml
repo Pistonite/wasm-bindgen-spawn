@@ -1,0 +1,41 @@
+version: '3'
+
+includes:
+  ecma:
+    taskfile: ./node_modules/mono-dev/task/ecma.yaml
+    internal: true
+    optional: true
+
+tasks:
+  check:
+    - task: ecma:check
+  fix:
+    - task: ecma:fix
+
+  dev:
+    - task: ecma:app-dev
+
+  build-wasm:
+    deps: [build-wasm-abort, build-wasm-unwind]
+
+  build-wasm-abort:
+    internal: true
+    dir: ../build-abort
+    cmds:
+      - >
+        wasm-pack build -t web
+        --no-pack --out-dir {{.TASKFILE_DIR}}/public/rt-abort
+        --release --out-name rt_abort
+        -- --features harness-broadcast
+      - rm {{.TASKFILE_DIR}}/public/rt-abort/*.d.ts
+
+  build-wasm-unwind:
+    internal: true
+    dir: ../build-unwind
+    cmds:
+      - >
+        wasm-pack build -t web
+        --no-pack --out-dir {{.TASKFILE_DIR}}/public/rt-unwind
+        --release --out-name rt_unwind
+        -- --features harness-broadcast
+      - rm {{.TASKFILE_DIR}}/public/rt-unwind/*.d.ts

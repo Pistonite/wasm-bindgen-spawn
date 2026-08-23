@@ -1,4 +1,4 @@
-mod arc_atmoic;
+mod arc_atomic;
 mod async_panic;
 mod async_thread;
 mod available_parallelism;

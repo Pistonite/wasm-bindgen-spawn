@@ -1,0 +1,7 @@
+*_gen.d.ts
+*.gen.ts
+node_modules
+/dist
+/tsconfig*.json
+/eslint.config.js
+.prettierignore

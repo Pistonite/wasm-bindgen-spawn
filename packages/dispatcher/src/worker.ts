@@ -7,7 +7,9 @@ import { type WorkerInitArgs, type WorkerInitMessage } from "./types.ts";
 declare let __export: unknown;
 // eslint-disable-next-line prefer-const
 __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>) => {
-    await __debug_init();
+    if (import.meta.env.BUILD_DEBUG) {
+        await __debug_init();
+    }
     __debug("[worker-thread] started");
     let wasm_bindgen: WorkerInitArgs;
     try {

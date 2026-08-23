@@ -12,9 +12,24 @@ catalogs:
     '@types/node':
       specifier: ^24
       version: 24.13.3
+    '@types/react':
+      specifier: ^19.2.18
+      version: 19.2.18
+    '@types/react-dom':
+      specifier: ^19.2.4
+      version: 19.2.4
     mono-dev:
       specifier: github:pistonight/mono-dev#dist
       version: 0.4.28
+    react:
+      specifier: ^19.2.8
+      version: 19.2.8
+    react-dom:
+      specifier: ^19.2.8
+      version: 19.2.8
+    zustand:
+      specifier: ^5.0.15
+      version: 5.0.15
 
 importers:
 
@@ -47,6 +62,31 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      mono-dev:
+        specifier: 'catalog:'
+        version: https://codeload.github.com/pistonight/mono-dev/tar.gz/84425254293897a1968e32b7a42d21b35309cbb1(@types/node@24.13.3)(prettier@3.5.3)(rolldown@1.2.3)(yaml@2.9.0)
+
+  packages/website:
+    dependencies:
+      react:
+        specifier: 'catalog:'
+        version: 19.2.8
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.8(react@19.2.8)
+      zustand:
+        specifier: 'catalog:'
+        version: 5.0.15(@types/react@19.2.18)(react@19.2.8)
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.4(@types/react@19.2.18)
       mono-dev:
         specifier: 'catalog:'
         version: https://codeload.github.com/pistonight/mono-dev/tar.gz/84425254293897a1968e32b7a42d21b35309cbb1(@types/node@24.13.3)(prettier@3.5.3)(rolldown@1.2.3)(yaml@2.9.0)
@@ -537,6 +577,14 @@ packages:
   '@types/node@24.13.3':
     resolution: {integrity: sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==}
 
+  '@types/react-dom@19.2.4':
+    resolution: {integrity: sha512-Bsc+QHgp+P/F02XDzNCY9jnZNCUuLki36KT7VKrTXXLdHf+vHMNZnW1rVu5DNW/rCK+fya3DATySbLM4yhtKUw==}
+    peerDependencies:
+      '@types/react': ^19.2.0
+
+  '@types/react@19.2.18':
+    resolution: {integrity: sha512-AnzbBERsrLKtk2XSfTbYRLjQPdy116Sty4q+T+Bp3IC4l6jNBvreVPAHmpq9qhXQM7CXZPjLVmGMw9sy+hxQ3w==}
+
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
@@ -762,6 +810,9 @@ packages:
   css-tree@3.2.1:
     resolution: {integrity: sha512-X7sjQzceUhu1u7Y/ylrRZFU2FS6LRiFVp6rKLPg23y3x3c3DOKAwuXGDp+PAGjh6CSnCjYeAul8pcT8bAl+lSA==}
     engines: {node: ^10 || ^12.20.0 || ^14.13.0 || >=15.0.0}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
   data-urls@7.0.0:
     resolution: {integrity: sha512-23XHcCF+coGYevirZceTVD7NdJOqVn+49IHyxgszm+JIiHLoB2TkmPtsYkNWT1pvRSGkc35L6NHs0yHkN2SumA==}
@@ -1287,6 +1338,15 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
+  react-dom@19.2.8:
+    resolution: {integrity: sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ==}
+    peerDependencies:
+      react: ^19.2.8
+
+  react@19.2.8:
+    resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
+    engines: {node: '>=0.10.0'}
+
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
     engines: {node: '>=0.10.0'}
@@ -1299,6 +1359,9 @@ packages:
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
+
+  scheduler@0.27.0:
+    resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
@@ -1646,6 +1709,24 @@ packages:
 
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+
+  zustand@5.0.15:
+    resolution: {integrity: sha512-MpSEjRiBkA9crSYeOUH32rJC7SVqAbm0Fqcqge/bUi2PPoLcBWKOsG+C8mevmpr8TwXHBVkChbbJiyvkE+i/3A==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
 
 snapshots:
 
@@ -2151,6 +2232,14 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
+  '@types/react-dom@19.2.4(@types/react@19.2.18)':
+    dependencies:
+      '@types/react': 19.2.18
+
+  '@types/react@19.2.18':
+    dependencies:
+      csstype: 3.2.3
+
   '@types/unist@3.0.3': {}
 
   '@typescript-eslint/eslint-plugin@8.66.0(@typescript-eslint/parser@8.66.0(eslint@10.8.1)(typescript@6.0.3))(eslint@10.8.1)(typescript@6.0.3)':
@@ -2394,6 +2483,8 @@ snapshots:
     dependencies:
       mdn-data: 2.27.1
       source-map-js: 1.2.1
+
+  csstype@3.2.3: {}
 
   data-urls@7.0.0:
     dependencies:
@@ -2914,6 +3005,13 @@ snapshots:
 
   punycode@2.3.1: {}
 
+  react-dom@19.2.8(react@19.2.8):
+    dependencies:
+      react: 19.2.8
+      scheduler: 0.27.0
+
+  react@19.2.8: {}
+
   require-from-string@2.0.2: {}
 
   rolldown@1.2.3:
@@ -2939,6 +3037,8 @@ snapshots:
   saxes@6.0.0:
     dependencies:
       xmlchars: 2.2.0
+
+  scheduler@0.27.0: {}
 
   semver@6.3.1: {}
 
@@ -3229,3 +3329,8 @@ snapshots:
   zod@3.25.76: {}
 
   zod@4.4.3: {}
+
+  zustand@5.0.15(@types/react@19.2.18)(react@19.2.8):
+    optionalDependencies:
+      '@types/react': 19.2.18
+      react: 19.2.8

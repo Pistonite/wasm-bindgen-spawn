@@ -10,6 +10,8 @@ use crate::harness;
 /// and spawn 3 threads to each send the main thread many values
 #[wasm_bindgen]
 pub fn example_mpsc_channel() {
+    let l = line!();
+    harness::log("test-src", &format!("example_mpsc_channel={}:{l}", file!()));
     harness::log("test-start", "example_mpsc_channel");
     let log_context = "test-log:example_mpsc_channel";
     // -------- in the example you may ignore the harness calls; they are for tests only

@@ -1,0 +1,98 @@
+:root {
+    color-scheme: light dark;
+
+    /* catppuccin latte */
+    --base: #eff1f5;
+    --mantle: #e6e9ef;
+    --crust: #dce0e8;
+    --surface0: #ccd0da;
+    --surface1: #bcc0cc;
+    --overlay0: #9ca0b0;
+    --subtext0: #6c6f85;
+    --text: #4c4f69;
+    --mauve: #8839ef;
+    --blue: #1e66f5;
+    --lavender: #7287fd;
+    --green: #40a02b;
+    --red: #d20f39;
+    --peach: #fe640b;
+
+    /* rust orange */
+    --accent: var(--peach);
+
+    --font-ui:
+        system-ui, -apple-system, "Segoe UI", roboto, helvetica, arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji";
+    --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", menlo, consolas, monospace;
+
+    --hover-transition: 120ms ease;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* catppuccin mocha */
+        --base: #1e1e2e;
+        --mantle: #181825;
+        --crust: #11111b;
+        --surface0: #313244;
+        --surface1: #45475a;
+        --overlay0: #6c7086;
+        --subtext0: #a6adc8;
+        --text: #cdd6f4;
+        --mauve: #cba6f7;
+        --blue: #89b4fa;
+        --lavender: #b4befe;
+        --green: #a6e3a1;
+        --red: #f38ba8;
+        --peach: #fab387;
+    }
+}
+
+/* the app fills the viewport, so every ancestor needs a definite height */
+html,
+body,
+#-root- {
+    height: 100%;
+}
+
+body {
+    background-color: var(--base);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14px;
+}
+
+*:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.main {
+    display: flex;
+    flex: 1;
+    /* without this the console overflows the page instead of scrolling */
+    min-height: 0;
+}
+
+.sidebar {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    width: 260px;
+    min-height: 0;
+    padding: 16px;
+    border-right: 1px solid var(--surface0);
+    gap: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --hover-transition: 0s;
+    }
+}

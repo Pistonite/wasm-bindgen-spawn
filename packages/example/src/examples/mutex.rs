@@ -8,6 +8,8 @@ use crate::harness;
 /// and observe a section of interleaving values
 #[wasm_bindgen]
 pub fn example_mutex() {
+    let l = line!();
+    harness::log("test-src", &format!("example_mutex={}:{l}", file!()));
     harness::log("test-start", "example_mutex");
     let log_context = "test-log:example_mutex";
     // -------- in the example you may ignore the harness calls; they are for tests only
@@ -55,6 +57,8 @@ pub fn example_mutex() {
 /// Panic while holding a lock should produce a poison error
 #[wasm_bindgen]
 pub fn example_mutex_poison() {
+    let l = line!();
+    harness::log("test-src", &format!("example_mutex_poison={}:{l}", file!()));
     harness::log("test-start", "example_mutex_poison");
     let log_context = "test-log:example_mutex_poison";
     // -------- in the example you may ignore the harness calls; they are for tests only

@@ -29,6 +29,10 @@ const plugin: Plugin = {
             if (output.includes("console.log")) {
                 throw new Error("unexpected console.log found in output");
             }
+            // make sure debug-only async calls aren't left as `await undefined`
+            if (output.includes("await void 0")) {
+                throw new Error("unexpected await void 0 found in output");
+            }
         }
         fs.writeFileSync(
             path.resolve(import.meta.dirname, "..", "lib", "src", "dispatcher.js"),
@@ -36,7 +40,7 @@ const plugin: Plugin = {
         );
         const size = output.length;
         console.log(
-            `bundled script written to /packages/lib/src/dispatcher.js (${size} bytes ${BUILD_DEBUG ? "[DEBUG]" : ""})`,
+            `bundled script written to /packages/lib/src/dispatcher.js (${size} bytes${BUILD_DEBUG ? "[DEBUG]" : ""})`,
         );
     },
 };

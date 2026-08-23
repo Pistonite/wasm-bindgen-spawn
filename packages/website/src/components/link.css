@@ -1,0 +1,9 @@
+.doc-link {
+    color: var(--accent);
+    white-space: nowrap;
+    transition: color var(--hover-transition);
+}
+
+.doc-link:hover {
+    color: var(--blue);
+}

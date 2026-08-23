@@ -8,6 +8,8 @@ use crate::harness;
 /// event loop
 #[wasm_bindgen]
 pub fn example_async_thread() {
+    let l = line!();
+    harness::log("test-src", &format!("example_async_thread={}:{l}", file!()));
     harness::log("test-start", "example_async_thread");
     let log_context = "test-log:example_async_thread";
     // -------- in the example you may ignore the harness calls; they are for tests only

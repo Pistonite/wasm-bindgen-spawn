@@ -10,6 +10,8 @@ use crate::harness;
 /// causes a Rust panic should terminate that thread
 #[wasm_bindgen]
 pub fn example_async_panic() {
+    let l = line!();
+    harness::log("test-src", &format!("example_async_panic={}:{l}", file!()));
     harness::log("test-start", "example_async_panic");
     let log_context = "test-log:example_async_panic";
     // -------- in the example you may ignore the harness calls; they are for tests only

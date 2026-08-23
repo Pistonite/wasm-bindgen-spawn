@@ -8,6 +8,8 @@ use crate::harness;
 /// https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency
 #[wasm_bindgen]
 pub fn example_available_parallelism() {
+    let l = line!();
+    harness::log("test-src", &format!("example_available_parallelism={}:{l}", file!()));
     harness::log("test-start", "example_available_parallelism");
     let log_context = "test-log:example_available_parallelism";
     // -------- in the example you may ignore the harness calls; they are for tests only

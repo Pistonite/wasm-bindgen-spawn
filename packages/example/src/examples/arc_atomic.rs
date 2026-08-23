@@ -10,6 +10,8 @@ use crate::harness;
 /// spawning worker is expensive. You should pool the threads
 #[wasm_bindgen]
 pub fn example_arc_atomic() {
+    let l = line!();
+    harness::log("test-src", &format!("example_arc_atomic={}:{l}", file!()));
     harness::log("test-start", "example_arc_atomic");
     let log_context = "test-log:example_arc_atomic";
     // -------- in the example you may ignore the harness calls; they are for tests only
@@ -44,6 +46,8 @@ pub fn example_arc_atomic() {
 /// tasks for each thread to operate on the atomic integer
 #[wasm_bindgen]
 pub fn example_arc_atomic_pooled() {
+    let l = line!();
+    harness::log("test-src", &format!("example_arc_atomic_pooled={}:{l}", file!()));
     harness::log("test-start", "example_arc_atomic_pooled");
     let log_context = "test-log:example_arc_atomic_pooled";
     // -------- in the example you may ignore the harness calls; they are for tests only

@@ -6,6 +6,7 @@ use js_sys::{Function, JsString};
 use wasm_bindgen::prelude::*;
 
 static LOGS: Mutex<String> = Mutex::new(String::new());
+
 thread_local! {
     // since the harness stores a serialization function implemented in JS
     // it needs to be thread local
@@ -53,10 +54,20 @@ pub fn error(s: impl Into<JsValue>) {
 }
 struct Harness {
     serialize_fn: Function,
+    #[cfg(feature = "harness-broadcast")]
+    broadcast_fn: Function,
 }
 impl Harness {
     fn new() -> Self {
         let serialize_fn = Function::new_with_args("ARG", include_str!("serialize.js"));
+
+        #[cfg(feature = "harness-broadcast")]
+        {Self {
+            serialize_fn,
+            broadcast_fn: Function::new_no_args(include_str!("broadcast.js")).call0(&JsValue::undefined()).unwrap().dyn_into::<Function>().unwrap()
+        }}
+
+        #[cfg(not(feature = "harness-broadcast"))]
         Self { serialize_fn }
     }
     fn log(&self, tag: &str, x: &str) {
@@ -75,6 +86,11 @@ impl Harness {
             .and_then(|x| x.dyn_into::<JsString>())
         {
             Ok(v) => {
+                #[cfg(feature = "harness-broadcast")]
+                {
+                    let v = JsValue::from(v.clone());
+                    let _ = self.broadcast_fn.call1(&JsValue::undefined(), &v);
+                }
                 let rs_string: String = v.into();
                 let mut logs = LOGS.lock().unwrap();
                 // uncomment to debug
@@ -100,11 +116,7 @@ pub fn panic_info<'a>(payload: &'a Box<dyn Any + Send + 'static>) -> &'a str {
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn console_log(s: &JsValue);
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn console_log_str(s: &str);
-    #[wasm_bindgen(js_namespace = console, js_name = error)]
-    fn console_error(s: &JsValue);
     #[wasm_bindgen(js_namespace = console, js_name = error)]
     fn console_error_str(s: &str);
 }

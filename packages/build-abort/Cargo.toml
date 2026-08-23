@@ -1,5 +1,6 @@
 [package]
 name = "build-abort"
+description = "Meta files to build the example crate using panic=abort"
 version = "0.0.0"
 edition = "2024"
 publish = false
@@ -7,9 +8,10 @@ publish = false
 [workspace]
 
 [dependencies]
-example.path = "../../example"
+example.path = "../example"
 [features]
 no-wbg-module = ["example/no-wbg-module"]
+harness-broadcast = ["example/harness-broadcast"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

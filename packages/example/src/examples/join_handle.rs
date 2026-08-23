@@ -6,6 +6,8 @@ use crate::harness;
 /// then join them in order.
 #[wasm_bindgen]
 pub fn example_join_handle() {
+    let l = line!();
+    harness::log("test-src", &format!("example_join_handle={}:{l}", file!()));
     harness::log("test-start", "example_join_handle");
     let log_context = "test-log:example_join_handle";
     // -------- in the example you may ignore the harness calls; they are for tests only

@@ -1,0 +1,29 @@
+{
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "dependencies": {
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "zustand": "catalog:"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "mono-dev": "catalog:"
+    },
+    "pistonight/mono-dev": {
+        "lib": false,
+        "https": true,
+        "worker": "es",
+        "import.meta.env": {
+            "COMMIT": true
+        }
+    },
+    "imports": {
+        "#components": "./src/components/index.ts",
+        "#harness": "./src/harness/index.ts",
+        "#surfaces": "./src/surfaces/index.ts"
+    }
+}

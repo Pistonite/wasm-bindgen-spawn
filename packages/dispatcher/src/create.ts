@@ -16,7 +16,9 @@ declare const WORKER_JS: string;
 declare let __return: Promise<void>;
 // eslint-disable-next-line prefer-const
 __return = (async () => {
-    await __debug_init();
+    if (import.meta.env.BUILD_DEBUG) {
+        await __debug_init();
+    }
     const [bg_target, bg_js, wasm_module, memory, recv, start_send] = ARGS;
     let useESWorker = false;
     let workerSource: string;
