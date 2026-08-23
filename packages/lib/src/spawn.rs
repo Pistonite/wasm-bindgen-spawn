@@ -1,16 +1,16 @@
 use std::panic::AssertUnwindSafe;
-use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Mutex, mpsc};
+use std::sync::Mutex;
 
 use js_sys::{Function, Promise};
 use wasm_bindgen::{JsCast, JsError, JsValue};
 
-use crate::binding::{self, js_arg_vec, js_type};
+use crate::binding;
 use crate::binding_constants::{WBG_TARGET_NO_MODULES, WBG_TARGET_WEB};
 use crate::join::JoinHandle;
 use crate::util::{
-    self, DispatchPayload, DispatchReceiver, DispatchSender, SignalSender, ThreadProc,
+    js_arg_vec, js_type, raw_ptr_type,
+    DispatchPayload, DispatchReceiver, DispatchSender, ThreadProc,
 };
 
 /// Start building a thread dispatcher using the bindgen script from the "no-modules" target.
@@ -140,10 +140,10 @@ impl ThreadDispatcherInit {
     /// provided by `wasm-bindgen-futures` (now `js_sys::futures`) which is what the
     /// `#[wasm_bindgen]` macro uses under the hood for async functions.
     pub fn create_dispatcher_promise(self) -> Promise {
-        js_sys::futures::future_to_promise(async move {
+        js_sys::futures::future_to_promise(AssertUnwindSafe(async move {
             self.create_dispatcher().await?;
             Ok(JsValue::undefined())
-        })
+        }))
     }
 
     /// Spawn the dispatcher worker and wait for it to become ready
@@ -168,8 +168,9 @@ impl ThreadDispatcherInit {
         }
         // this function is implemented in dispatcher/src/create.ts
         let create_dispatcher = Function::new_with_args("ARGS", include_str!("dispatcher.js"));
-        let (send, recv) = mpsc::channel::<DispatchPayload>();
-        let (signal_send, signal_recv) = util::assert_unwind_safe_oneshot_channel::<()>();
+        let (send, recv) = tokio::sync::mpsc::unbounded_channel::<DispatchPayload>();
+        let (signal_send, signal_recv) = oneshot::channel::<()>();
+        let signal_recv = AssertUnwindSafe(signal_recv);
 
         // type alias for generating TypeScript types
         type ThreadCreatorArgs = Vec<JsValue>;
@@ -179,8 +180,8 @@ impl ThreadDispatcherInit {
                 bg_js: js_type!(string) = self.bg_js,
                 wasm_module: js_type!(WebAssembly.Module) = self.wasm_module,
                 memory: js_type!(WebAssembly.Memory) = wasm_bindgen::memory(),
-                recv_ptr: NonNull<DispatchReceiver> = binding::into_js(recv),
-                dispatcher_start_signal_send_ptr: NonNull<SignalSender> = binding::into_js(signal_send),
+                recv_ptr: *mut DispatchReceiver = binding::into_js(recv),
+                dispatcher_start_signal_send_ptr: raw_ptr_type!(SignalSender) = signal_send.into_raw(),
             ] as ThreadCreatorArgs
         };
 
@@ -281,14 +282,14 @@ where
     // assert unwind safety here only to work around wasm_bindgen's
     // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
     // See ThreadProc for explanation of the unwind safety model
-    let f_boxed: ThreadProc = AssertUnwindSafe(Box::new(move || {
+    let f_boxed: ThreadProc = Box::new(move || {
         // execute the main function to create the value
         let value = f();
         // wrap the future to return the boxed value with type erased
-        let wrapped_f = async move { Box::new(value).into() };
+        let wrapped_f = std::future::ready(Box::new(value).into());
         // return the wrapped future pinned to satisfy the type
         Box::pin(wrapped_f)
-    }));
+    });
     spawn_impl(f_boxed)
 }
 
@@ -330,7 +331,7 @@ where
     // assert unwind safety here only to work around wasm_bindgen's
     // requirement that anything crossing JS-Rust boundary needs to be unwind safe.
     // See ThreadProc for explanation of the unwind safety model
-    let f_boxed: ThreadProc = AssertUnwindSafe(Box::new(move || {
+    let f_boxed: ThreadProc = Box::new(move || {
         // execute the main function to create the future
         let fut = f();
         // wrap the future to return the boxed value with type erased
@@ -340,7 +341,7 @@ where
         };
         // return the wrapped future pinned to satisfy the type
         Box::pin(wrapped_f)
-    }));
+    });
     spawn_impl(f_boxed)
 }
 
@@ -371,7 +372,7 @@ where
     //     Box::new(f.await).into()
     // }));
     let next_id = NEXT_THREAD_ID.fetch_add(1, Ordering::Relaxed);
-    let (send, recv) = util::assert_unwind_safe_oneshot_channel();
+    let (send, recv) = oneshot::channel();
     dispatcher
         .send((f, send))
         .map_err(|_| SpawnError::Disconnected)?;

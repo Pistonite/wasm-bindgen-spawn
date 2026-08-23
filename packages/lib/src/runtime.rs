@@ -7,24 +7,38 @@ use js_sys::Function;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::Closure;
 
-use crate::binding_constants::{WORKER_MSG_PANIC, WORKER_MSG_SUCCESS};
-use crate::util::{ThreadProc, ValueSender, WorkerPanic, WorkerResult};
+use crate::util::{ThreadProc, ValueSender, WorkerPanic, raw_ptr_type};
+
+thread_local! {
+    /// The worker thread's runtime.
+    ///
+    /// Currently, this just holds the pointer to the channel to send the result of the worker.
+    static RUNTIME: RefCell<Option<raw_ptr_type!(ValueSender)>> = const { RefCell::new(None) };
+}
 
 /// Run the thread's main future. Return a JS Promise that should be sent
 /// to the JS side and awaited
-///
-/// In normal circumstances, the function internally handles sending the result
-/// to the join handle and terminating the JS worker. The JS will also
-/// attempt to call terminate if the thread runtime fails to do so
-/// to avoid leaving a worker idling forever
-pub fn thread_main(proc: Box<ThreadProc>, terminate_fn: Function, sender: ValueSender) -> JsValue {
+pub fn thread_main(proc: Box<ThreadProc>, maybe_moves_sender: raw_ptr_type!(ValueSender)) -> JsValue {
+    // run the synchronous part to get a future
+    // if the synchronous part panics, it will raise a JS exception
+    // that will be caught in the worker JS code
+    let fut = if cfg!(panic="unwind") {
+        match std::panic::catch_unwind(AssertUnwindSafe(proc)) {
+            Err(e) => {
+                let sender = unsafe { ValueSender::from_raw(maybe_moves_sender) };
+                let _ = sender.send(Err(WorkerPanic { payload: Some(e) }));
+                return JsValue::undefined();
+            }
+            Ok(x) => x
+        }
+    } else {
+        proc()
+    };
     // setup the runtime
-    let terminator = Terminator { terminate_fn };
-    let runtime = Runtime { terminator, sender };
-    RUNTIME.with_borrow_mut(|x| *x = Some(runtime));
+    RUNTIME.with_borrow_mut(|x| *x = Some(maybe_moves_sender));
 
     // Enter JS realm
-    let promise = js_sys::futures::future_to_promise(async move {
+    let promise = js_sys::futures::future_to_promise(AssertUnwindSafe(async move {
         // run the main future locally and handle any panic that happened
         // while driving the main future.
         //
@@ -33,20 +47,20 @@ pub fn thread_main(proc: Box<ThreadProc>, terminate_fn: Function, sender: ValueS
         // for the .await in the below blocks to never return.
         // For those cases the downstream must call spawn_local from this crate
         // to ensure they connect to the thread's runtime
-        let wrapped_fut = CatchPanicAndUnwind {
-            f: async move {
-                // run the synchronous part to get a future
-                let fut = proc();
-                // run the future
-                fut.await
-            },
+        let wrapped_fut = LocalTryOrAbort {
+            try_or_abort_fn: create_try_or_abort_fn(),
+            f: fut
         };
-        let result = AssertUnwindSafe(wrapped_fut).await;
+        let result = wrapped_fut.await;
 
-        terminate_with_result(result);
+        // hopefully if we got to this point, there is no observed panic, meaning the value is valid
+        if let Some(sender) = RUNTIME.with_borrow_mut(|x| x.take()) {
+            let sender = unsafe { ValueSender::from_raw(sender) };
+            let _ = sender.send(Ok(result));
+        }
 
         Ok(JsValue::undefined())
-    });
+    }));
 
     promise.into()
 }
@@ -66,109 +80,107 @@ pub fn spawn_local<F>(future: F)
 where
     F: Future<Output = ()> + 'static,
 {
-    js_sys::futures::spawn_local(async move {
-        let future_wrapped = CatchPanicAndUnwind { f: future };
-        if let Err(e) = future_wrapped.await {
-            terminate_with_result(Err(e));
-        }
-    });
-}
-
-fn terminate_with_result(result: WorkerResult) {
-    let rt = RUNTIME.with_borrow_mut(|x| x.take());
-    let Some(rt) = rt else {
-        // the runtime is already terminated, perhaps by async task
-        return;
-    };
-    let success = result.is_ok();
-    let _ = rt.sender.0.send(result);
-    if success {
-        rt.terminator.success();
+    if RUNTIME.with_borrow(|x| x.is_some()) {
+        js_sys::futures::spawn_local(LocalTryOrAbort { 
+            try_or_abort_fn: create_try_or_abort_fn(),
+            f: future
+        });
     } else {
-        rt.terminator.panic();
+        // the runtime is not active, probably on the main thread - 
+        // so just spawn it normally
+        js_sys::futures::spawn_local(future);
     }
 }
 
-struct Runtime {
-    terminator: Terminator,
-    sender: ValueSender,
-}
-thread_local! {
-    static RUNTIME: RefCell<Option<Runtime>> = const { RefCell::new(None) };
-}
-
-/// Binding with a JS termination function that accepts a WORKER_MSG
-///
-/// After calling this it is expected that the JS Engine will kill this thread
-/// shortly
-struct Terminator {
-    terminate_fn: Function,
-}
-impl Terminator {
-    pub fn success(&self) {
-        let _ = self
-            .terminate_fn
-            .call1(&JsValue::undefined(), &WORKER_MSG_SUCCESS.into());
-    }
-    pub fn panic(&self) {
-        let _ = self
-            .terminate_fn
-            .call1(&JsValue::undefined(), &WORKER_MSG_PANIC.into());
-    }
-}
-
-/// The TryCatch future implementation is adopted from
+/// Adopted from
 /// https://github.com/wasm-bindgen/wasm-bindgen/issues/2392#issuecomment-758892311
 ///
-/// This is similar to catch_unwind in futures-util, except it wraps each poll
-/// with a JS try-catch and std::panic::catch_unwind (if panic=unwind)
-struct CatchPanicAndUnwind<F: ?Sized> {
+/// Wrap each poll with a JS try-catch AND catch_unwind (if panic=unwind). If either a soft
+/// or hard panic is caught, terminate the worker thread. The join handle will then be notified
+/// of this panic
+struct LocalTryOrAbort<F: ?Sized> {
+    try_or_abort_fn: Function,
     f: F,
 }
-impl<F: ?Sized> Future for CatchPanicAndUnwind<F>
+fn create_try_or_abort_fn() -> Function {
+    // since we are a library and there's no good way to "include custom JS"
+    // directly in the library, we indirect-eval a function with the Function constructor.
+    // This unfortunately adds a lot of JS overhead when driving the future.
+    // (the inline_js/module attribute in wasm_bindgen could be useful
+    // but currently that is not supported for no-modules target)
+    Function::new_with_args("x", "try{x()}catch{try{globalThis.__pistonite_wbgspawn_worker_terminate(true)}catch(e){console.error(e)}}")
+}
+impl<F: ?Sized> Future for LocalTryOrAbort<F>
 where
     F: Future,
 {
-    type Output = Result<F::Output, WorkerPanic>;
+    type Output = F::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // since we are a library and there's no good way to "include custom JS"
-        // directly in the library, we indirect-eval a function with the Function constructor.
-        // This unfortunately adds a lot of JS overhead when driving the future.
-        //
-        // we are also creating the function on each poll since the JSValue is not
-        // Send/Sync, storing the function will make the enture future not Send
-        let try_catch: Function = Function::new_with_args("x", "try{x()}catch{}");
+        // take out the sender, we only put it back to allow sending value
+        // if the poll does not panic
+        let sender = RUNTIME.with_borrow_mut(|x| x.take());
+
+        let Some(sender) = sender else {
+            // do not execute any code if we already panicked
+            return Poll::Pending;
+        };
+
+        let try_or_abort_fn = self.try_or_abort_fn.clone();
+
         // need this wrapper because Closure::borror_mut only takes FnMut and not FnOnce
-        let mut f = Some(|| {
-            // safety: f is pinned while self is
+        let mut poll_f_within_try_catch = Some(|| {
+            // safety: fields are pinned while self is
             let f = unsafe { self.map_unchecked_mut(|s| &mut s.f) };
             if cfg!(panic = "unwind") {
+                // if this hard aborts it should trigger the global abort hook
                 match std::panic::catch_unwind(AssertUnwindSafe(|| f.poll(cx))) {
                     Ok(x) => Ok(x),
                     Err(e) => Err(WorkerPanic { payload: Some(e) }),
                 }
             } else {
+                // if this hard panics it should trigger the global abort hook
                 Ok(f.poll(cx))
             }
         });
-        let o = RefCell::new(None);
-        let mut closure = AssertUnwindSafe(|| {
+        let output = RefCell::new(None);
+        let mut poll_closure = AssertUnwindSafe(|| {
             // make sure we first execute the function (which may panic)
-            let result = f.take().unwrap()();
-            // .. then borrow the ref cell
-            *o.borrow_mut() = Some(result);
+            let result = poll_f_within_try_catch.take().unwrap()();
+            // .. then borrow the ref cell <- this will not be called if the poll panicked
+            *output.borrow_mut() = Some(result);
         });
-        let c = Closure::borrow_mut(&mut closure);
-        // ignore the Err, since the function itself is literally a try-catch
-        // it's not supposed to throw anyway; even if it does we only care about
-        // if we got a value
-        let _ = try_catch.call1(&JsValue::undefined(), c.as_js_value());
-        match o.take() {
-            Some(Ok(Poll::Ready(t))) => Poll::Ready(Ok(t)),
-            Some(Ok(Poll::Pending)) => Poll::Pending,
-            Some(Err(panic)) => Poll::Ready(Err(panic)),
-            None => Poll::Ready(Err(WorkerPanic { payload: None })),
-        }
+        let poll_closure_obj = Closure::borrow_mut(&mut poll_closure);
+
+        let _ = try_or_abort_fn.call1(&JsValue::undefined(), poll_closure_obj.as_js_value());
+        let result = match output.take() {
+            Some(x) => x,
+            None => {
+                // we hard panicked and the worker should be scheduled to terminate,
+                // return pending to never call any code.
+                // ideally the runtime should avoid polling us anymore
+                return Poll::Pending;
+            }
+        };
+        let poll_output = match result {
+            Err(panic) => {
+                // if we "soft" panicked, i.e. panic caught by unwind,
+                // we will send the panic and still kill this thread
+                let send = unsafe { ValueSender::from_raw(sender) };
+                let _ = send.send(Err(panic));
+                // request soft abort (abort without sending a value again, since the sender is
+                // already dropped)
+                let abort_fn = Function::new_no_args("try{globalThis.__pistonite_wbgspawn_worker_terminate(false)}catch(e){console.error(e)}");
+                let _ = abort_fn.call0(&JsValue::undefined());
+                // never poll the future again
+                return Poll::Pending;
+            }
+            Ok(x) => x
+        };
+        // either pending or ready, now we can put the sender back as the thread still has work to
+        // do
+        RUNTIME.with_borrow_mut(|x| *x = Some(sender));
+
+        poll_output
     }
 }

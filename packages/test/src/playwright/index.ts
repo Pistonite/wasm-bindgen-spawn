@@ -45,7 +45,7 @@ const main = async () => {
             return;
         }
 
-        const { skip, engines, tripleFilters, testFilters } = parseCommandLineArgs(
+        const { skip, one, engines, tripleFilters, testFilters } = parseCommandLineArgs(
             process.argv.slice(2),
             [...BROWSER_ENGINES],
         );
@@ -63,7 +63,7 @@ const main = async () => {
             try {
                 code = 0;
                 for (const engine of engines) {
-                    code = await runPlaywright(engine, tripleFilters, testFilters);
+                    code = await runPlaywright(engine, tripleFilters, one, testFilters);
                     if (code !== 0) {
                         break;
                     }
@@ -89,6 +89,7 @@ const main = async () => {
 const runPlaywright = async (
     engine: BrowserEngine,
     tripleFilters: string[],
+    one: boolean,
     testFilters: string[],
 ): Promise<number> => {
     const cli = getPlaywrightCli();
@@ -104,6 +105,7 @@ const runPlaywright = async (
                 cwd: getPackageRoot(),
                 env: {
                     PW_WBS_TRIPLE_FILTERS: tripleFilters.join(","),
+                    PW_WBS_TRIPLE_FILTER_ONE: one ? "1" : "",
                     PW_WBS_TEST_FILTERS: testFilters.join(","),
                     PW_TEST_CONNECT_WS_ENDPOINT: `ws://localhost:${PW_PORT}`,
                 },

@@ -1,7 +1,5 @@
 use std::any::Any;
-use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
-use std::sync::mpsc;
 
 /// ThreadProc is the "main function" for the thread
 ///
@@ -77,9 +75,9 @@ use std::sync::mpsc;
 ///
 /// The `AssertUnwindSafe` wrapper exists in the type to workaround `wasm_bindgen`'s limitation
 /// that anything crossing the JS-Rust boundary needs to be UnwindSafe when `panic=unwind`.
-pub type ThreadProc = AssertUnwindSafe<
-    Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = Value> + 'static>> + Send + 'static>,
->;
+pub type ThreadProc = 
+    Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = Value> + 'static>> + Send + 'static>
+;
 // ThreadProc itself should just be a fat pointer
 static_assertions::assert_eq_size!(ThreadProc, [*mut (); 2]);
 
@@ -88,29 +86,18 @@ static_assertions::assert_eq_size!(ThreadProc, [*mut (); 2]);
 // not easily observable by other threads (see _worker_main in binding.rs)
 // so we can assert unwind safety here
 pub type WorkerResult = Result<Value, WorkerPanic>;
-pub type ValueSender = AssertUnwindSafe<oneshot::Sender<WorkerResult>>;
-pub type ValueReceiver = AssertUnwindSafe<oneshot::Receiver<WorkerResult>>;
+pub type ValueSender = oneshot::Sender<WorkerResult>;
+pub type ValueReceiver = oneshot::Receiver<WorkerResult>;
 pub type ValueReceiverAsync = oneshot::AsyncReceiver<WorkerResult>;
 
 // the thread dispatch payload is the main function and the channel to send
 // the result back
 pub type DispatchPayload = (ThreadProc, ValueSender);
-pub type DispatchSender = mpsc::Sender<DispatchPayload>;
-pub type DispatchReceiver = mpsc::Receiver<DispatchPayload>;
+pub type DispatchSender = tokio::sync::mpsc::UnboundedSender<DispatchPayload>;
+pub type DispatchReceiver = tokio::sync::mpsc::UnboundedReceiver<DispatchPayload>;
 
-// signals are used to synchronize multiple web worker threads,
-// panics aren't observable on the other side if one side panics,
-// so we will assert unwind safety
-pub type SignalSender = AssertUnwindSafe<oneshot::Sender<()>>;
-pub type SignalReceiver = AssertUnwindSafe<oneshot::Receiver<()>>;
-
-pub fn assert_unwind_safe_oneshot_channel<T>() -> (
-    AssertUnwindSafe<oneshot::Sender<T>>,
-    AssertUnwindSafe<oneshot::Receiver<T>>,
-) {
-    let (send, recv) = oneshot::channel();
-    (AssertUnwindSafe(send), AssertUnwindSafe(recv))
-}
+pub type SignalSender = oneshot::Sender<()>;
+pub type SignalReceiver = oneshot::Receiver<()>;
 
 /// Error when joining a thread with a [`JoinHandle`]
 #[derive(Debug)]
@@ -145,3 +132,31 @@ impl Value {
         unsafe { Box::from_raw(self.ptr as *mut T) }
     }
 }
+
+/// Helper to generate a binding
+macro_rules! js_arg_vec {
+    ([ $($arg_name:ident : $arg_type:ty = $arg_rust:expr),* $(,)? ] as $ts_type_name:ident) => {{
+        $(
+            let $arg_name: $arg_type = $arg_rust;
+        )*
+        let x: $ts_type_name = vec![ $(
+            $arg_name.into(),
+        )* ];
+        x
+    }};
+}
+pub(crate) use js_arg_vec;
+
+macro_rules! js_type {
+    ($($arg:tt)*) => {
+        wasm_bindgen::JsValue
+    };
+}
+pub(crate) use js_type;
+
+macro_rules! raw_ptr_type {
+    ($($arg:tt)*) => {
+        *mut ()
+    };
+}
+pub(crate) use raw_ptr_type;

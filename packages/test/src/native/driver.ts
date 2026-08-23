@@ -116,6 +116,8 @@ const runTests = async (
             const fn = wasm_bindgen[testCase as keyof typeof wasm_bindgen] as () => void;
             fn();
         });
+        // wait some time to allow IO/console.log to flush
+        await new Promise(r=>setTimeout(r, 100));
     }
     wasm_bindgen.uninit();
     const log = wasm_bindgen.get_log();

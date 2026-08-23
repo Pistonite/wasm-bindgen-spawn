@@ -34,7 +34,7 @@ export type Engine = NativeEngine | BrowserEngine;
 
 export type Triple = `${Profile}-${PanicRuntime}-${Target}`;
 
-export const getTargetTestTriples = (filters: string[], isBrowser: boolean): Triple[] => {
+export const getTargetTestTriples = (filters: string[], one: boolean, isBrowser: boolean): Triple[] => {
     const shouldRun = (triple: string): boolean => {
         if (!filters.length) {
             return true;
@@ -70,6 +70,10 @@ export const getTargetTestTriples = (filters: string[], isBrowser: boolean): Tri
         }
     }
 
+    if (one && triples.length > 1) {
+        return [triples[0]];
+    }
+
     return triples;
 };
 
@@ -94,6 +98,7 @@ export const getTestSelection = (testNames: string[], testFilters: string[]): st
 
 export interface CommandLineArgs<T extends Engine> {
     skip: boolean;
+    one: boolean;
     engines: T[];
     tripleFilters: string[];
     testFilters: string[];
@@ -104,7 +109,7 @@ export const parseCommandLineArgs = <T extends Engine>(
     engines: T[],
 ): CommandLineArgs<T> => {
     const outEngines: T[] = [];
-    let tripleFilters: string[] = [];
+    const tripleFilters: string[] = [];
     const testFilters: string[] = [];
     let one = false;
     let hasUnwantedEngine = false;
@@ -133,13 +138,10 @@ export const parseCommandLineArgs = <T extends Engine>(
         tripleFilters.push(arg);
     }
 
-    if (one) {
-        tripleFilters = ["debug-unwind-no-modules"];
-    }
-
     if (!outEngines.length && hasUnwantedEngine) {
         return {
             skip: true,
+            one,
             engines: [],
             tripleFilters,
             testFilters,
@@ -148,6 +150,7 @@ export const parseCommandLineArgs = <T extends Engine>(
 
     return {
         skip: false,
+        one,
         engines: outEngines.length ? outEngines : engines,
         tripleFilters,
         testFilters,

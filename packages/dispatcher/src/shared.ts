@@ -25,9 +25,7 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
         if (typeof Deno !== "undefined") {
             useESWorker = true;
         }
-        if (import.meta.env.BUILD_DEBUG) {
-            await __debugImpl("using web worker");
-        }
+        __debug("using WebWorker");
         try {
             const worker = useESWorker ? new Worker(url, { type: "module" }) : new Worker(url);
             return {
@@ -47,12 +45,10 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
         const worker = new worker_threads.Worker(script, { eval: true }) as any;
         if (import.meta.env.BUILD_DEBUG) {
             worker.on("exit", async () => {
-                await __debugImpl("worker exit");
+                __debug("worker exit");
             });
         }
-        if (import.meta.env.BUILD_DEBUG) {
-            await __debugImpl("using node:worker_threads");
-        }
+        __debug("using node:worker_threads");
         return {
             listen: (cb) => worker.on("message", cb),
             postMessage: worker.postMessage.bind(worker),
@@ -66,9 +62,7 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
 
 export const getWorkerGlobalScope = async (): Promise<WorkerGlobalScopeAdapter> => {
     if (typeof self !== "undefined") {
-        if (import.meta.env.BUILD_DEBUG) {
-            await __debugImpl("using WorkerGlobalScope");
-        }
+        __debug("using WorkerGlobalScope");
         return {
             listen: (cb) => (self.onmessage = ({ data }) => cb(data)),
             postMessage: self.postMessage.bind(self),
@@ -76,9 +70,7 @@ export const getWorkerGlobalScope = async (): Promise<WorkerGlobalScopeAdapter> 
         };
     }
     try {
-        if (import.meta.env.BUILD_DEBUG) {
-            await __debugImpl("using node:worker_threads parentPort");
-        }
+        __debug("using node:worker_threads parentPort");
         const worker_threads = await new Function(`return import("node:worker_threads")`)();
         const parentPort = worker_threads.parentPort;
         return {
@@ -91,41 +83,47 @@ export const getWorkerGlobalScope = async (): Promise<WorkerGlobalScopeAdapter> 
     }
 };
 
-export const __debugImpl = async (...x: unknown[]) => {
+export const __debugInitImpl = async () => {
     // using fs allows us to bypass the js event loop
     // and make the messages appear more or less in the order they are logged
     try {
         const fs = await new Function("return import('fs')")();
-        for (const m of x) {
-            if (typeof m === "string") {
-                try {
-                    fs.writeSync(1, "[debug] " + m + "\n");
-                } catch (e) {
-                    console.error(e);
-                    console.log(m);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (globalThis as any).__debug_hook =  (...x: unknown[]) => {
+            for (const m of x) {
+                if (typeof m === "string") {
+                    try {
+                        fs.writeSync(1, "[debug] " + m + "\n");
+                    } catch (e) {
+                        console.error(e);
+                        console.log(m);
+                    }
+                    continue;
                 }
-                continue;
-            }
-            try {
-                const mJson = JSON.stringify(m, undefined, 2);
                 try {
-                    fs.writeSync(1, "[debug] " + mJson + "\n");
-                } catch (e) {
-                    console.error(e);
-                    console.log(m);
-                }
-                continue;
-            } catch {
-                const mStr = `${m}`;
-                try {
-                    fs.writeSync(1, "[debug] " + mStr + "\n");
-                } catch (e) {
-                    console.error(e);
-                    console.log(m);
+                    const mJson = JSON.stringify(m, undefined, 2);
+                    try {
+                        fs.writeSync(1, "[debug] " + mJson + "\n");
+                    } catch (e) {
+                        console.error(e);
+                        console.log(m);
+                    }
+                    continue;
+                } catch {
+                    const mStr = `${m}`;
+                    try {
+                        fs.writeSync(1, "[debug] " + mStr + "\n");
+                    } catch (e) {
+                        console.error(e);
+                        console.log(m);
+                    }
                 }
             }
         }
     } catch {
-        console.log(...x);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (globalThis as any).__debug_hook =  (...x: unknown[]) => {
+            console.log(...x);
+        }
     }
-};
+}

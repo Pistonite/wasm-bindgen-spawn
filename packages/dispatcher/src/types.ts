@@ -1,4 +1,4 @@
-import type { NonNull, WasmBindgen } from "./binding.gen.ts";
+import type { RustType, WasmBindgen } from "./binding.gen.ts";
 
 export type WasmBindgenInitFn = (init: {
     memory: WebAssembly.Memory;
@@ -9,11 +9,11 @@ export type WorkerInitArgs = WasmBindgen & { initSync: WasmBindgenInitFn };
 /** Message posted from the dispatcher to the worker for initialization */
 export interface WorkerInitMessage {
     /** main rust closure to execute */
-    f: NonNull<"ThreadProc">;
+    f: RustType<"*mut ThreadProc">;
     /** sender for the return value */
-    send: NonNull<"ValueSender">;
+    send: RustType<"*mut ValueSender">;
     /** sender for the start signal */
-    start: NonNull<"SignalSender">;
+    start: RustType<"*mut SignalSender">;
     /** memory for instantiating the wasm instance in this thread (worker) */
     memory: WebAssembly.Memory;
     /** compiled module for instantiating the wasm instance in this thread (worker) */
@@ -23,15 +23,15 @@ export interface WorkerInitMessage {
 /** Message posted from the thread creator to the dispatcher for initialization */
 export interface DispatcherInitMessage {
     /** receiver for thread-spawn requests */
-    recv: NonNull<"DispatchReceiver">;
+    recv: RustType<"*mut DispatchReceiver">;
     /** signal to indicate the dispatcher is ready */
-    start_send: NonNull<"SignalSender">;
+    start_send: RustType<"*mut SignalSender">;
     /** code to spawn workers */
     script: string;
     /** memory for instantiating the wasm instance in this thread (dispatcher) */
     memory: WebAssembly.Memory;
     /** compiled module for instantiating the wasm instance in this thread (dispatcher) */
     wasm: WebAssembly.Module;
-    /** Create worker as ESM */
+    /** Create worker with type: module */
     useESWorker: boolean;
 }

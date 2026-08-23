@@ -16,6 +16,7 @@ declare const WORKER_JS: string;
 declare let __return: Promise<void>;
 // eslint-disable-next-line prefer-const
 __return = (async () => {
+    await __debug_init();
     const [bg_target, bg_js, wasm_module, memory, recv, start_send] = ARGS;
     let useESWorker = false;
     let workerSource: string;
@@ -71,13 +72,13 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
         }
     }
     const dispatcherUrl = createJsBlobUrl(dispatcherSource);
-    await __debug("creating dispatcher worker");
+    __debug("creating dispatcher worker");
     const dispatcher = await createWorker(dispatcherUrl, useESWorker);
-    await __debug("dispatcher worker created");
+    __debug("dispatcher worker created");
     await new Promise<void>((resolve) => {
         dispatcher.listen(async (data) => {
             if (data) {
-                await __debug("dispatcher worker ready");
+                __debug("dispatcher worker ready");
                 // WORKER_MSG_READY, the dispatcher worker started
                 // and we can send the message to initialize the dispatcher
                 resolve();
@@ -94,7 +95,7 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
                 URL.revokeObjectURL(dispatcherUrl);
                 return;
             }
-            await __debug("terminating dispatcher worker");
+            __debug("terminating dispatcher worker");
             dispatcher.terminate();
         });
     });

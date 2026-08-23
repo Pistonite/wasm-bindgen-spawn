@@ -11,7 +11,7 @@ import {
 } from "#framework";
 
 const main = async () => {
-    const { skip, engines, tripleFilters, testFilters } = parseCommandLineArgs(
+    const { skip, one, engines, tripleFilters, testFilters } = parseCommandLineArgs(
         process.argv.slice(2),
         [...NATIVE_ENGINES],
     );
@@ -19,7 +19,7 @@ const main = async () => {
         return;
     }
 
-    const triples = getTargetTestTriples(tripleFilters, false /* isBrowser */);
+    const triples = getTargetTestTriples(tripleFilters, one, false /* isBrowser */);
     if (!triples.length) {
         console.error("no tests specified");
         process.exit(1);

@@ -43,7 +43,7 @@ impl<T: Send + 'static> JoinHandle<T> {
     /// For more information on unwind and catching panics, see the [wasm-bindgen book](https://wasm-bindgen.github.io/wasm-bindgen/reference/catch-unwind.html)
     /// or the crate's README.
     pub fn join(self) -> Result<T, Box<dyn Any + Send + 'static>> {
-        handle_join_result(self.id, self.recv.0.recv())
+        handle_join_result(self.id, self.recv.recv())
     }
 
     /// Check if the thread has finished executing, or panicked.
@@ -67,7 +67,7 @@ impl<T: Send + 'static> IntoFuture for JoinHandle<T> {
     fn into_future(self) -> Self::IntoFuture {
         AsyncJoinHandle {
             id: self.id,
-            recv: self.recv.0.into_future(),
+            recv: self.recv.into_future(),
             _marker: PhantomData,
         }
     }

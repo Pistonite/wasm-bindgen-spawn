@@ -4,9 +4,10 @@ import { getTargetTestTriples } from "#framework";
 
 const tripleFilters: string[] =
     process.env.PW_WBS_TRIPLE_FILTERS?.split(",")?.map((x) => x.trim()) ?? [];
+const one: boolean = !!process.env.PW_WBS_TRIPLE_FILTER_ONE;
 const testFilters: string[] =
     process.env.PW_WBS_TEST_FILTERS?.split(",")?.map((x) => x.trim()) ?? [];
-const triples = getTargetTestTriples(tripleFilters, true /* isBrowser */);
+const triples = getTargetTestTriples(tripleFilters, one, true /* isBrowser */);
 
 // time wait for 'done' (or error) to be reported from the page
 const RUN_TIMEOUT_MS = 300 * 1000;

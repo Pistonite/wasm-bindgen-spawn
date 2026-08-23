@@ -22,5 +22,6 @@ include = [
 js-sys.workspace = true
 wasm-bindgen.workspace = true
 oneshot = { workspace = true, features = ["std", "async"] }
+tokio = { workspace = true, features = ["sync"] }
 static_assertions.workspace = true
 thiserror.workspace = true

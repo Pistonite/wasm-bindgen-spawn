@@ -20,7 +20,7 @@ const plugin: Plugin = {
         const output = `let __return,DISPATCHER_JS=${dispatcherExpr},WORKER_JS=${workerExpr};${createCode};return __return;`;
         // ensure dead code elimination works
         if (!BUILD_DEBUG) {
-            if (output.includes("[debug]")) {
+            if (output.includes("[debug]") || output.includes("__debug")) {
                 throw new Error("unexpected debug tag found in output");
             }
             if (output.includes("fs")) {
@@ -61,8 +61,8 @@ const serializeCode = (code: string): string => {
 export default <UserConfig>configure({
     plugins: [plugin],
     define: {
-        __DEBUG__: true,
         "import.meta.env.BUILD_DEBUG": BUILD_DEBUG,
-        __debug: BUILD_DEBUG ? `(await import('./shared.ts')).__debugImpl` : `(function(){})`,
+        __debug: BUILD_DEBUG ? `globalThis.__debug_hook` : `(function(){})`,
+        __debug_init: BUILD_DEBUG ? `(await import('./shared.ts')).__debugInitImpl` : `(function(){})`,
     },
 });
