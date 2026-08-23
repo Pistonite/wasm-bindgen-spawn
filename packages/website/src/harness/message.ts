@@ -198,9 +198,9 @@ const stripExamplePrefix = (x: string): string => {
 
 const parseSourceLocation = (payload: string): [string, LogMessageLink] => {
     const [name, location] = payload.split("=", 2);
-    const [file, line] = location.split(":", 2);
-    const relPath = getCrateRelPath(file);
-    let url = GITHUB_LINK + "/blob/" + import.meta.env.COMMIT + "/packages/example/" + relPath;
+    const relLocation = getCrateRelPath(location);
+    const [file, line] = relLocation.split(":", 2);
+    let url = GITHUB_LINK + "/blob/" + import.meta.env.COMMIT + "/packages/example/" + file;
     let lineNum = 0;
     if (line) {
         try {
@@ -219,7 +219,7 @@ const parseSourceLocation = (payload: string): [string, LogMessageLink] => {
         name,
         {
             url,
-            text: relPath + (lineNum ? `:${lineNum}` : ""),
+            text: file + (lineNum ? `:${lineNum}` : ""),
         },
     ];
 };

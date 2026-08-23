@@ -6,6 +6,11 @@ includes:
     internal: true
     optional: true
 
+  dispatcher:
+    taskfile: ../dispatcher
+    dir: ../dispatcher
+    internal: true
+
 tasks:
   check:
     - task: ecma:check
@@ -16,11 +21,13 @@ tasks:
     - task: ecma:app-dev
 
   build:
+    - task: dispatcher:build
     - task: build-wasm
     - task: ecma:app-build
 
   build-wasm:
-    deps: [build-wasm-abort, build-wasm-unwind]
+    - task: build-wasm-abort
+    - task: build-wasm-unwind
 
   build-wasm-abort:
     internal: true
@@ -43,3 +50,6 @@ tasks:
         --release --out-name rt_unwind
         -- --features harness-broadcast
       - rm {{.TASKFILE_DIR}}/public/rt-unwind/*.d.ts
+
+  publish:
+    - pnpm exec wrangler deploy
