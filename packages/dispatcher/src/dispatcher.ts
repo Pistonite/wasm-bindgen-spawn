@@ -64,15 +64,11 @@ __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>)
                             } satisfies WorkerInitMessage);
                             return resolve();
                         case WORKER_MSG_SUCCESS:
-                            __debug(
-                                "[disp-thread] worker success received, terminating worker",
-                            );
+                            __debug("[disp-thread] worker success received, terminating worker");
                             worker.terminate();
                             return;
                         case WORKER_MSG_PANIC:
-                            __debug(
-                                "[disp-thread] worker panic received, terminating worker",
-                            );
+                            __debug("[disp-thread] worker panic received, terminating worker");
                             if (!panicPosted) {
                                 // upon hard abort, the wasm instance in the worker
                                 // cannot be safely called again, so we let the dispatcher

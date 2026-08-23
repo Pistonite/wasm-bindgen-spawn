@@ -28,6 +28,13 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
         __debug("using WebWorker");
         try {
             const worker = useESWorker ? new Worker(url, { type: "module" }) : new Worker(url);
+            // stop worker error from being treated as unhandled in the parent
+            worker.onerror = (e) => {
+                if (e && typeof e.preventDefault === "function") {
+                    e.preventDefault();
+                }
+                console.error("unhandled error from worker: " + e.message);
+            };
             return {
                 listen: (cb) => (worker.onmessage = ({ data }) => cb(data)),
                 postMessage: worker.postMessage.bind(worker),
@@ -49,6 +56,10 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
             });
         }
         __debug("using node:worker_threads");
+        // stop worker error from being treated as unhandled in the parent
+        worker.on("error", (e: unknown) => {
+            console.error("unhandled error from worker: " + e);
+        });
         return {
             listen: (cb) => worker.on("message", cb),
             postMessage: worker.postMessage.bind(worker),
@@ -61,7 +72,7 @@ export const createWorker = async (url: string, useESWorker: boolean): Promise<W
 };
 
 export const getWorkerGlobalScope = async (): Promise<WorkerGlobalScopeAdapter> => {
-    if (typeof self !== "undefined") {
+    if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) {
         __debug("using WorkerGlobalScope");
         return {
             listen: (cb) => (self.onmessage = ({ data }) => cb(data)),
@@ -89,7 +100,7 @@ export const __debugInitImpl = async () => {
     try {
         const fs = await new Function("return import('fs')")();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (globalThis as any).__debug_hook =  (...x: unknown[]) => {
+        (globalThis as any).__debug_hook = (...x: unknown[]) => {
             for (const m of x) {
                 if (typeof m === "string") {
                     try {
@@ -119,11 +130,11 @@ export const __debugInitImpl = async () => {
                     }
                 }
             }
-        }
+        };
     } catch {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (globalThis as any).__debug_hook =  (...x: unknown[]) => {
+        (globalThis as any).__debug_hook = (...x: unknown[]) => {
             console.log(...x);
-        }
+        };
     }
-}
+};

@@ -63,6 +63,8 @@ export default <UserConfig>configure({
     define: {
         "import.meta.env.BUILD_DEBUG": BUILD_DEBUG,
         __debug: BUILD_DEBUG ? `globalThis.__debug_hook` : `(function(){})`,
-        __debug_init: BUILD_DEBUG ? `(await import('./shared.ts')).__debugInitImpl` : `(function(){})`,
+        __debug_init: BUILD_DEBUG
+            ? `(await import('./shared.ts')).__debugInitImpl`
+            : `(function(){})`,
     },
 });

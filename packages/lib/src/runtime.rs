@@ -4,8 +4,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use js_sys::Function;
-use wasm_bindgen::JsValue;
-use wasm_bindgen::prelude::Closure;
+use wasm_bindgen::prelude::*;
 
 use crate::util::{ThreadProc, ValueSender, WorkerPanic, raw_ptr_type};
 
@@ -14,28 +13,33 @@ thread_local! {
     ///
     /// Currently, this just holds the pointer to the channel to send the result of the worker.
     static RUNTIME: RefCell<Option<raw_ptr_type!(ValueSender)>> = const { RefCell::new(None) };
+    static IS_WORKER: RefCell<bool> = const { RefCell::new(false) };
 }
 
 /// Run the thread's main future. Return a JS Promise that should be sent
 /// to the JS side and awaited
-pub fn thread_main(proc: Box<ThreadProc>, maybe_moves_sender: raw_ptr_type!(ValueSender)) -> JsValue {
+pub fn thread_main(
+    proc: Box<ThreadProc>,
+    maybe_moves_sender: raw_ptr_type!(ValueSender),
+) -> JsValue {
     // run the synchronous part to get a future
     // if the synchronous part panics, it will raise a JS exception
     // that will be caught in the worker JS code
-    let fut = if cfg!(panic="unwind") {
+    let fut = if cfg!(panic = "unwind") {
         match std::panic::catch_unwind(AssertUnwindSafe(proc)) {
             Err(e) => {
                 let sender = unsafe { ValueSender::from_raw(maybe_moves_sender) };
                 let _ = sender.send(Err(WorkerPanic { payload: Some(e) }));
                 return JsValue::undefined();
             }
-            Ok(x) => x
+            Ok(x) => x,
         }
     } else {
         proc()
     };
     // setup the runtime
     RUNTIME.with_borrow_mut(|x| *x = Some(maybe_moves_sender));
+    IS_WORKER.with_borrow_mut(|x| *x = true);
 
     // Enter JS realm
     let promise = js_sys::futures::future_to_promise(AssertUnwindSafe(async move {
@@ -49,7 +53,7 @@ pub fn thread_main(proc: Box<ThreadProc>, maybe_moves_sender: raw_ptr_type!(Valu
         // to ensure they connect to the thread's runtime
         let wrapped_fut = LocalTryOrAbort {
             try_or_abort_fn: create_try_or_abort_fn(),
-            f: fut
+            f: fut,
         };
         let result = wrapped_fut.await;
 
@@ -80,14 +84,14 @@ pub fn spawn_local<F>(future: F)
 where
     F: Future<Output = ()> + 'static,
 {
-    if RUNTIME.with_borrow(|x| x.is_some()) {
-        js_sys::futures::spawn_local(LocalTryOrAbort { 
+    if IS_WORKER.with_borrow(|x| *x) {
+        js_sys::futures::spawn_local(LocalTryOrAbort {
             try_or_abort_fn: create_try_or_abort_fn(),
-            f: future
+            f: future,
         });
     } else {
-        // the runtime is not active, probably on the main thread - 
-        // so just spawn it normally
+        // on the main thread, the try-or-abort is not available,
+        // so just pass-through to js_sys
         js_sys::futures::spawn_local(future);
     }
 }
@@ -108,7 +112,10 @@ fn create_try_or_abort_fn() -> Function {
     // This unfortunately adds a lot of JS overhead when driving the future.
     // (the inline_js/module attribute in wasm_bindgen could be useful
     // but currently that is not supported for no-modules target)
-    Function::new_with_args("x", "try{x()}catch{try{globalThis.__pistonite_wbgspawn_worker_terminate(true)}catch(e){console.error(e)}}")
+    Function::new_with_args(
+        "x",
+        "try{x()}catch{try{globalThis.__pistonite_wbgspawn_worker_terminate(true)}catch(e){console.error(e)}}",
+    )
 }
 impl<F: ?Sized> Future for LocalTryOrAbort<F>
 where
@@ -122,7 +129,7 @@ where
         let sender = RUNTIME.with_borrow_mut(|x| x.take());
 
         let Some(sender) = sender else {
-            // do not execute any code if we already panicked
+            // do not execute any code if we already panicked/lost the runtime
             return Poll::Pending;
         };
 
@@ -170,12 +177,14 @@ where
                 let _ = send.send(Err(panic));
                 // request soft abort (abort without sending a value again, since the sender is
                 // already dropped)
-                let abort_fn = Function::new_no_args("try{globalThis.__pistonite_wbgspawn_worker_terminate(false)}catch(e){console.error(e)}");
+                let abort_fn = Function::new_no_args(
+                    "try{globalThis.__pistonite_wbgspawn_worker_terminate(false)}catch(e){console.error(e)}",
+                );
                 let _ = abort_fn.call0(&JsValue::undefined());
                 // never poll the future again
                 return Poll::Pending;
             }
-            Ok(x) => x
+            Ok(x) => x,
         };
         // either pending or ready, now we can put the sender back as the thread still has work to
         // do

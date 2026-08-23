@@ -33,8 +33,7 @@ __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>)
             // try { doSomethingInRust() } catch { /* hard abort */ __global_abort() }
             //
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (globalThis as any).__pistonite_wbgspawn_worker_terminate
-            = (abort: boolean) => {
+            (globalThis as any).__pistonite_wbgspawn_worker_terminate = (abort: boolean) => {
                 __debug("[worker-thread] global abort called");
                 if (abort) {
                     abortCalled = true;
@@ -51,11 +50,7 @@ __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>)
             // on the happy path (no panic or panic=unwind and no hard abort),
             // the value will be sent to the join handle in the same call
             // so no additional JS-Rust call is needed
-            await wasm_bindgen.__pistonite_wbgspawn_worker_main(
-                f,
-                send,
-                start,
-            );
+            await wasm_bindgen.__pistonite_wbgspawn_worker_main(f, send, start);
 
             if (!abortCalled) {
                 // the value is already sent to the join handle,
@@ -63,7 +58,6 @@ __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>)
                 __debug("[worker-thread] posting success");
                 self_.postMessage(WORKER_MSG_SUCCESS);
             }
-
         } catch {
             // exceptions caught here are synchronous panics
             self_.postMessage(WORKER_MSG_PANIC);

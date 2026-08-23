@@ -7,6 +7,8 @@ import {
     type Engine,
     type Profile,
     type Target,
+    BROWSER_ENGINES,
+    type BrowserEngine,
 } from "./util.ts";
 
 export const saveLogFile = (engine: Engine, triple: string, rawLogContent: string) => {
@@ -175,7 +177,9 @@ export interface LogFile {
     target: Target;
     tests: Record<string, TestLog>;
     triple: string;
+
     getTestLog(test: string): TestLog;
+    isBrowser(): boolean;
 }
 
 export class TestLog {
@@ -243,6 +247,10 @@ class LogFileImpl implements LogFile {
             );
         }
         return testLog;
+    }
+
+    public isBrowser() {
+        return BROWSER_ENGINES.includes(this.engine as BrowserEngine);
     }
 }
 

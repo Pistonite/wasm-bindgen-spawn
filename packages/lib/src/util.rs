@@ -75,9 +75,8 @@ use std::pin::Pin;
 ///
 /// The `AssertUnwindSafe` wrapper exists in the type to workaround `wasm_bindgen`'s limitation
 /// that anything crossing the JS-Rust boundary needs to be UnwindSafe when `panic=unwind`.
-pub type ThreadProc = 
-    Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = Value> + 'static>> + Send + 'static>
-;
+pub type ThreadProc =
+    Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = Value> + 'static>> + Send + 'static>;
 // ThreadProc itself should just be a fat pointer
 static_assertions::assert_eq_size!(ThreadProc, [*mut (); 2]);
 

@@ -2,8 +2,10 @@ use std::panic::AssertUnwindSafe;
 
 use wasm_bindgen::prelude::*;
 
-use crate::util::{DispatchReceiver, SignalReceiver, SignalSender, ThreadProc, ValueSender, WorkerPanic, js_arg_vec, js_type, raw_ptr_type};
-
+use crate::util::{
+    DispatchReceiver, SignalReceiver, SignalSender, ThreadProc, ValueSender, WorkerPanic,
+    js_arg_vec, js_type, raw_ptr_type,
+};
 
 /// Main function of the worker thread
 #[doc(hidden)]
@@ -105,9 +107,9 @@ pub fn __pistonite_wbgspawn_dispatch_recv(
             Some(v) => v,
             None => return Ok(JsValue::undefined()),
         };
-        
+
         let (start_send, start_recv) = oneshot::channel::<()>();
-        
+
         let request = js_arg_vec! {
             [
                 f_ptr: raw_ptr_type!(ThreadProc) = into_js::<ThreadProc>(closure) as *mut (),
@@ -117,7 +119,8 @@ pub fn __pistonite_wbgspawn_dispatch_recv(
             ] as DispatchThreadRequest
         };
         Ok(request.into())
-    })).into()
+    }))
+    .into()
 }
 
 /// For generating glue in TS

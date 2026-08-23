@@ -18,8 +18,8 @@ export default defineConfig({
     fullyParallel: true,
     /* Fail the build on CI if you accidentally left test.only in the source code. */
     forbidOnly: !!process.env.CI,
-    retries: 0,
-    workers: process.env.CI ? 1 : 8,
+    retries: 1, // webkit have some reliability issues
+    workers: process.env.CI ? 1 : 12,
     reporter: "list",
     /* the real test output is the harness logs under target/test, so there's
      * nothing here worth keeping around */

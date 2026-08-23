@@ -1,6 +1,6 @@
 use std::panic::AssertUnwindSafe;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use js_sys::{Function, Promise};
 use wasm_bindgen::{JsCast, JsError, JsValue};
@@ -9,8 +9,8 @@ use crate::binding;
 use crate::binding_constants::{WBG_TARGET_NO_MODULES, WBG_TARGET_WEB};
 use crate::join::JoinHandle;
 use crate::util::{
-    js_arg_vec, js_type, raw_ptr_type,
-    DispatchPayload, DispatchReceiver, DispatchSender, ThreadProc,
+    DispatchPayload, DispatchReceiver, DispatchSender, ThreadProc, js_arg_vec, js_type,
+    raw_ptr_type,
 };
 
 /// Start building a thread dispatcher using the bindgen script from the "no-modules" target.

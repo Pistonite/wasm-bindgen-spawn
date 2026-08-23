@@ -8,6 +8,8 @@ includes:
 
 tasks:
   check:
+    - silent: true
+      cmd: echo "checking debug is disabled"; grep "BUILD_DEBUG = false" vite.config.ts
     - node build.ts
     - task: ecma:check
   fix:

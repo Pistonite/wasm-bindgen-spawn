@@ -117,7 +117,7 @@ const runTests = async (
             fn();
         });
         // wait some time to allow IO/console.log to flush
-        await new Promise(r=>setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
     }
     wasm_bindgen.uninit();
     const log = wasm_bindgen.get_log();

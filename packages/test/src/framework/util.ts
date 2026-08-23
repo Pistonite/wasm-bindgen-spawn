@@ -34,7 +34,11 @@ export type Engine = NativeEngine | BrowserEngine;
 
 export type Triple = `${Profile}-${PanicRuntime}-${Target}`;
 
-export const getTargetTestTriples = (filters: string[], one: boolean, isBrowser: boolean): Triple[] => {
+export const getTargetTestTriples = (
+    filters: string[],
+    one: boolean,
+    isBrowser: boolean,
+): Triple[] => {
     const shouldRun = (triple: string): boolean => {
         if (!filters.length) {
             return true;
