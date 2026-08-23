@@ -30,6 +30,38 @@
     overflow-y: auto;
 }
 
+.console-running {
+    margin: 0;
+    padding: 3px 16px;
+    color: var(--subtext0);
+    font-family: var(--font-mono);
+    font-style: italic;
+}
+
+/* the dots are real text, revealed one character at a time */
+.console-running-dots {
+    display: inline-block;
+    width: 3ch;
+    overflow: hidden;
+    vertical-align: bottom;
+    animation: console-running-dots 1.2s steps(4, jump-none) infinite;
+}
+
+@keyframes console-running-dots {
+    from {
+        width: 0;
+    }
+    to {
+        width: 3ch;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .console-running-dots {
+        animation: none;
+    }
+}
+
 .console-empty {
     margin: 0;
     padding: 8px 16px;

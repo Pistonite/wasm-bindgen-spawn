@@ -20,6 +20,7 @@ includes:
   example: { taskfile: packages/example,    dir: packages/example,    internal: true }
   lib:     { taskfile: packages/lib,        dir: packages/lib,        internal: true }
   test:    { taskfile: packages/test,       dir: packages/test,       internal: true }
+  website: { taskfile: packages/website,    dir: packages/website,    internal: true }
     
 
 tasks:
@@ -34,4 +35,5 @@ tasks:
     - task: lib:check
     - task: example:check
     - task: test:check
+    - task: website:check
     

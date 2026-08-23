@@ -5,3 +5,5 @@ node_modules
 /tsconfig*.json
 /eslint.config.js
 .prettierignore
+
+public/rt-*

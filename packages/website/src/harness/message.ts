@@ -60,6 +60,8 @@ export type LogMessage = {
     message?: string;
     /** optional link rendered after the message */
     link?: LogMessageLink;
+    /** message after the link */
+    afterLink?: string;
     /** optional json payload */
     json?: unknown;
 };
@@ -126,12 +128,18 @@ export const parseHarnessMessage = (msg: HarnessMessage): LogMessage | undefined
             };
         }
         case "panic": {
+            const { file, line, col, message, url } = parsePanicPayload(msg.payload);
             return {
                 id,
                 timestamp: msg.timestamp,
                 thread: msg.thread,
                 kind: "panic",
-                message: msg.payload,
+                message: "panicked at",
+                link: {
+                    url,
+                    text: file + ":" + line + ":" + col,
+                },
+                afterLink: "\n" + message,
             };
         }
         case "init-main-thread-id": {
@@ -191,14 +199,8 @@ const stripExamplePrefix = (x: string): string => {
 const parseSourceLocation = (payload: string): [string, LogMessageLink] => {
     const [name, location] = payload.split("=", 2);
     const [file, line] = location.split(":", 2);
-    const i = file.lastIndexOf("/");
-    const fileName = i < 0 ? file : file.substring(i + 1);
-    let url =
-        GITHUB_LINK +
-        "/blob/" +
-        import.meta.env.COMMIT +
-        "/packages/example/src/examples/" +
-        fileName;
+    const relPath = getCrateRelPath(file);
+    let url = GITHUB_LINK + "/blob/" + import.meta.env.COMMIT + "/packages/example/" + relPath;
     let lineNum = 0;
     if (line) {
         try {
@@ -217,7 +219,31 @@ const parseSourceLocation = (payload: string): [string, LogMessageLink] => {
         name,
         {
             url,
-            text: fileName + (lineNum ? `:${lineNum}` : ""),
+            text: relPath + (lineNum ? `:${lineNum}` : ""),
         },
     ];
+};
+
+const parsePanicPayload = (payload: string) => {
+    const [location, message] = payload.split("\n");
+    const relPath = getCrateRelPath(location);
+    const [file, line, col] = relPath.split(":");
+    const url =
+        GITHUB_LINK + "/blob/" + import.meta.env.COMMIT + "/packages/example/" + file + "#L" + line;
+    return { file: "<crate>/" + file, line, col, message, url };
+};
+
+const getCrateRelPath = (file: string): string => {
+    const srcI = file.lastIndexOf("src");
+    if (srcI < 0) {
+        return file;
+    }
+    const after = file.substring(srcI);
+    let i = 0;
+    for (; i < after.length; i++) {
+        if (after[i] !== "/" && after[i] !== "\\") {
+            break;
+        }
+    }
+    return after.substring(i).replaceAll("\\", "/").trim();
 };

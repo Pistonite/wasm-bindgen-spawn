@@ -62,10 +62,16 @@ impl Harness {
         let serialize_fn = Function::new_with_args("ARG", include_str!("serialize.js"));
 
         #[cfg(feature = "harness-broadcast")]
-        {Self {
-            serialize_fn,
-            broadcast_fn: Function::new_no_args(include_str!("broadcast.js")).call0(&JsValue::undefined()).unwrap().dyn_into::<Function>().unwrap()
-        }}
+        {
+            Self {
+                serialize_fn,
+                broadcast_fn: Function::new_no_args(include_str!("broadcast.js"))
+                    .call0(&JsValue::undefined())
+                    .unwrap()
+                    .dyn_into::<Function>()
+                    .unwrap(),
+            }
+        }
 
         #[cfg(not(feature = "harness-broadcast"))]
         Self { serialize_fn }

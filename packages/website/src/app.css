@@ -16,6 +16,7 @@
     --green: #40a02b;
     --red: #d20f39;
     --peach: #fe640b;
+    --yellow: #df8e1d;
 
     /* rust orange */
     --accent: var(--peach);
@@ -45,6 +46,7 @@
         --green: #a6e3a1;
         --red: #f38ba8;
         --peach: #fab387;
+        --yellow: #f9e2af;
     }
 }
 

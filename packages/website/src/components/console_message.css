@@ -29,7 +29,7 @@
 
 /* test names are already lowercase identifiers, don't shout them */
 .badge-test {
-    background-color: var(--lavender);
+    background-color: var(--blue);
     text-transform: none;
 }
 
@@ -45,7 +45,7 @@
     flex: none;
     min-width: 100px;
     text-align: right;
-    color: var(--blue);
+    color: var(--yellow);
 }
 
 .thread-id-harness {
@@ -61,4 +61,8 @@
     min-width: 0;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+}
+
+.console-message.harness {
+    color: var(--subtext0);
 }

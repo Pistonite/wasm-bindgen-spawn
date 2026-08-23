@@ -13,6 +13,15 @@ export type Store = {
     panicRuntime: PanicRuntime;
     setPanicRuntime: (panicRuntime: PanicRuntime) => void;
 
+    /** how many examples are running right now */
+    runningCount: number;
+    startRunning: () => void;
+    finishRunning: () => void;
+
+    /** clear the console before each example run, so only one run's output is shown */
+    autoClear: boolean;
+    setAutoClear: (autoClear: boolean) => void;
+
     /** everything logged so far, oldest first */
     messages: LogMessage[];
     addMessage: (message: LogMessage) => void;
@@ -23,6 +32,19 @@ export const useStore = create<Store>()((set) => ({
     panicRuntime: "unwind",
     setPanicRuntime: (panicRuntime) => {
         set({ panicRuntime });
+    },
+
+    runningCount: 0,
+    startRunning: () => {
+        set((state) => ({ runningCount: state.runningCount + 1 }));
+    },
+    finishRunning: () => {
+        set((state) => ({ runningCount: Math.max(0, state.runningCount - 1) }));
+    },
+
+    autoClear: true,
+    setAutoClear: (autoClear) => {
+        set({ autoClear });
     },
 
     messages: [],

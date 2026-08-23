@@ -1,4 +1,5 @@
 export * from "./button.tsx";
+export * from "./checkbox.tsx";
 export * from "./console_message.tsx";
 export * from "./json_view.tsx";
 export * from "./link.tsx";

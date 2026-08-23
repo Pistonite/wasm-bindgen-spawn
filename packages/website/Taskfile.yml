@@ -24,7 +24,7 @@ tasks:
     cmds:
       - >
         wasm-pack build -t web
-        --no-pack --out-dir {{.TASKFILE_DIR}}/public/rt-abort
+        --no-pack --no-gitignore --out-dir {{.TASKFILE_DIR}}/public/rt-abort
         --release --out-name rt_abort
         -- --features harness-broadcast
       - rm {{.TASKFILE_DIR}}/public/rt-abort/*.d.ts
@@ -35,7 +35,7 @@ tasks:
     cmds:
       - >
         wasm-pack build -t web
-        --no-pack --out-dir {{.TASKFILE_DIR}}/public/rt-unwind
+        --no-pack --no-gitignore --out-dir {{.TASKFILE_DIR}}/public/rt-unwind
         --release --out-name rt_unwind
         -- --features harness-broadcast
       - rm {{.TASKFILE_DIR}}/public/rt-unwind/*.d.ts

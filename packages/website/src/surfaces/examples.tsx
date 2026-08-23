@@ -34,7 +34,23 @@ const ExampleList: React.FC<ExampleSectionProps> = ({ examples }) => {
                     key={name}
                     code
                     onClick={async () => {
-                        await runExampleWorker(name, useStore.getState().panicRuntime);
+                        const {
+                            panicRuntime,
+                            autoClear,
+                            clearMessages,
+                            startRunning,
+                            finishRunning,
+                        } = useStore.getState();
+                        if (autoClear) {
+                            clearMessages();
+                        }
+                        startRunning();
+                        try {
+                            await runExampleWorker(name, panicRuntime);
+                        } finally {
+                            // a worker that blows up must not leave the count stuck
+                            finishRunning();
+                        }
                     }}
                 >
                     {name}

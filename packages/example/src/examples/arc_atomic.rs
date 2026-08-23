@@ -47,7 +47,10 @@ pub fn example_arc_atomic() {
 #[wasm_bindgen]
 pub fn example_arc_atomic_pooled() {
     let l = line!();
-    harness::log("test-src", &format!("example_arc_atomic_pooled={}:{l}", file!()));
+    harness::log(
+        "test-src",
+        &format!("example_arc_atomic_pooled={}:{l}", file!()),
+    );
     harness::log("test-start", "example_arc_atomic_pooled");
     let log_context = "test-log:example_arc_atomic_pooled";
     // -------- in the example you may ignore the harness calls; they are for tests only

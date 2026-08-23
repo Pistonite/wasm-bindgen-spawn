@@ -17,18 +17,19 @@ export const ConsoleMessage: React.FC<ConsoleMessageProps> = ({ message }) => {
             {isHarness && <span className="thread-id thread-id-harness">{"<harness>"}</span>}
             {isMain && <span className="thread-id thread-id-main">{"Main"}</span>}
             {!isMain && !isHarness && <span className="thread-id">ThreadId({message.thread})</span>}
-            <span className="console-message">
+            <span className={isHarness ? "console-message harness" : "console-message"}>
                 {!!message.test && <span className="badge badge-test">{message.test}</span>}
                 {!!message.kind && (
                     <span className={`badge badge-${message.kind}`}>{message.kind}</span>
                 )}
                 {message.message}
-                {message.json !== undefined && <JsonView value={message.json} />}
                 {message.link !== undefined && (
                     <Link pad href={message.link.url}>
                         {message.link.text}
                     </Link>
                 )}
+                {message.afterLink}
+                {message.json !== undefined && <JsonView value={message.json} />}
             </span>
         </div>
     );
