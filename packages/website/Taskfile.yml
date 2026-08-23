@@ -15,6 +15,10 @@ tasks:
   dev:
     - task: ecma:app-dev
 
+  build:
+    - task: build-wasm
+    - task: ecma:app-build
+
   build-wasm:
     deps: [build-wasm-abort, build-wasm-unwind]
 

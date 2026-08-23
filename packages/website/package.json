@@ -11,7 +11,8 @@
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
-        "mono-dev": "catalog:"
+        "mono-dev": "catalog:",
+        "wrangler": "catalog:"
     },
     "pistonight/mono-dev": {
         "lib": false,
