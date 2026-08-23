@@ -6,9 +6,12 @@ members = [
 ]
 
 [workspace.dependencies]
-anyhow = "1.0.104"
+# If versions are changed please also update docs/src/support.md
 wasm-bindgen = "0.2.127"
 js-sys = "0.3.104"
+
+
+anyhow = "1.0.104"
 console_error_panic_hook = "0.1.7"
 oneshot = { version = "0.2.1", default-features = false }
 tokio = "1.53.1"

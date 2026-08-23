@@ -1,0 +1,14 @@
+[book]
+authors = ["Pistonight"]
+language = "en"
+title = "wasm-bindgen-spawn"
+
+[output.html]
+default-theme = "frappe"
+preferred-dark-theme = "frappe"
+smart-punctuation = true
+git-repository-url = "https://github.com/Pistonite/wasm-bindgen-spawn"
+additional-css = [
+    "./theme/extra-css/catppuccin.css", 
+    "./theme/extra-css/patch.css", 
+]

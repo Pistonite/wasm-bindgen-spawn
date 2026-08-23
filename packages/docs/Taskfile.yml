@@ -1,0 +1,22 @@
+version: '3'
+
+includes:
+  mdbook:
+    taskfile: ../../node_modules/mono-dev/task/mdbook.yaml
+    internal: true
+    optional: true
+
+tasks:
+  install:
+    - task: mdbook:install-theme
+  dev:
+    desc: Start mdbook in watch mode
+    cmds:
+      - rm -rf book
+      - shwoop book -w src --host -- mdbook build
+
+  build:
+    desc: (Re-)build the book
+    cmds:
+      - rm -rf book
+      - mdbook build

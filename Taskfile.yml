@@ -24,6 +24,12 @@ includes:
     
 
 tasks:
+  install-cargo-extra-tools:
+    aliases: [icets]
+    cmds:
+      # requires edge wasm-pack for a newer version of binaryen
+      - cargo install wasm-pack --git https://github.com/wasm-bindgen/wasm-pack --branch master
+      - cargo binstall shwoop mdbook
   install:
     cmds:
       - pnpm install
