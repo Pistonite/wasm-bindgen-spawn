@@ -29,6 +29,7 @@ tasks:
   install:
     cmds:
       - pnpm install
+      - task: docs:install
       - echo "nightly" > rust-toolchain
 
   check:
@@ -40,4 +41,5 @@ tasks:
     - task: website:check
     
   build-doc:
+    - task: docs:install
     - task: docs:build
