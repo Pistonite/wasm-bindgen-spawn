@@ -9,13 +9,10 @@ authors = ["Pistonight <pistonknight@outlook.com>"]
 keywords = ["WASM", "threads", "atomics", "wasm-bindgen", "shared-memory"]
 categories = ["web-programming", "wasm"]
 include = [
-    "/.cargo/config.toml",
     "/.gitignore",
     "/src/dispatcher.js",
     "src/**/*.rs",
     "Cargo.toml",
-    "/LICENSE",
-    "/README.md",
 ]
 
 [dependencies]

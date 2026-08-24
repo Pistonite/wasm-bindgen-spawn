@@ -1,4 +1,4 @@
-# see /cargo_config_sot.toml
+# see https://wbgspawn.pistonite.dev
 [env]
 WASM_BINDGEN_USE_JS_SYS="1"
 

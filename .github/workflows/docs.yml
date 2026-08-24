@@ -27,7 +27,7 @@ jobs:
     name: deploy-docs
     needs:
       - docs
-    if: github.event_name != 'pull_request'
+    # if: github.event_name != 'pull_request'
     permissions:
       pages: write
       id-token: write
