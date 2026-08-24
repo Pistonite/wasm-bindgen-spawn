@@ -1,6 +1,5 @@
 # wasm-bindgen-spawn
 
-![Build Badge](https://img.shields.io/github/check-runs/Pistonite/wasm-bindgen-spawn/main)
 ![Version Badge](https://img.shields.io/crates/v/wasm-bindgen-spawn)
 ![License Badge](https://img.shields.io/github/license/Pistonite/wasm-bindgen-spawn)
 ![Issue Badge](https://img.shields.io/github/issues/Pistonite/wasm-bindgen-spawn)
@@ -9,10 +8,10 @@ A Web Worker based multithreading library for Rust and WebAssembly.
 
 This uses the WebAssembly [threads proposal](https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md)
 and shared memory to communicate between workers (once they are started), instead of `postMessage`.
-The threads proposal is currently in [phase 4](https://webassembly.org/features/) and available in Chrome, Firefox, Safari and Node.js
+The threads proposal is currently in [phase 4](https://webassembly.org/features/) and available in all major browsers and runtimes.
 
 At the current stage, this is the closest thing to `std::thread::spawn`
-that "Just Works" for `wasm32-unknown-unknown` target. You can:
+that "Just Works" for `wasm32-unknown-unknown` target. For example you can:
 - Spawn a thread with a Rust closure
 - Join a thread
 - Send data between threads using channels
@@ -23,82 +22,9 @@ will remain on version `0.0.x` until all features required are in stable Rust,
 standardized in WASM, and baseline widely available across browsers.
 
 ## Examples
-The [`examples`](https://github.com/Pistonite/wasm-bindgen-spawn/tree/main/example) directory 
-on GitHub contains a full example using Vite. Check out the [live demo](https://wasm-bindgen-spawn.pistonite.org)
+The [Playground](https://wbgspawn-playground.pistonite.dev) has runnable examples and links to their source code on GitHub.
 
-See [ThreadCreator](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.ThreadCreator.html) for the main API.
-
-## Background/Design
-I wrote a blog on how and why this library is designed this way,
-and what the limitations are. You can read it [here](https://pistonite.github.io/wasm-bindgen-spawn).
-
-## Requirements
-
-### Cross-Origin Isolation
-
-You can read more about this in the [web dev article](https://web.dev/articles/coop-coep). Long story short:
-- This is required for `SharedArrayBuffer`
-- This is to mitigate Spectre-like attacks
-
-To get started, the server that serves the main document must send these headers:
-```
-Cross-Origin-Embedder-Policy: require-corp
-Cross-Origin-Opener-Policy: same-origin
-```
-
-You can check if the document is in a cross-origin isolated context by running this in the console:
-```javascript
-self.crossOriginIsolated
-```
-
-Read the full article for more details on the implications of Cross-Origin Isolation.
-
-### Rust Nightly and `target-feature`
-1. Create a `rust-toolchain` file (no extensions) and put `nightly` in it, to use the nightly toolchain
-    ```sh
-    echo "nightly" > rust-toolchain
-    ```
-2. Add the following to `.cargo/config.toml`
-    ```toml
-    [target.wasm32-unknown-unknown]
-    rustflags = [
-        "-C", "target-feature=+atomics",
-        "-Clink-args=--shared-memory",
-        "-Clink-args=--import-memory",
-        "-Clink-args=--max-memory=1073741824",
-        "-Clink-args=--export=__wasm_init_tls",
-        "-Clink-args=--export=__tls_size",
-        "-Clink-args=--export=__tls_align",
-        "-Clink-args=--export=__tls_base",
-    ]
-    # You also need `bulk-memory` for Rust < 1.87. For 1.87+ it's enabled by default
-    # rustflags = ["-C", "target-feature=+atomics,+bulk-memory"]
-
-    [unstable]
-    build-std = ["panic_abort", "std"]
-    ```
-
-### `wasm-pack` Target
-Currently, this library only supports the `no-modules` target:
-```sh
-wasm-pack build -t no-modules --panic-unwind
-```
-Note: `wasm-pack 0.15.0` uses `binaryen v117` which does not implement
-the TryTable in DeadCodeElimination pass (fixed in `v119`). If you get an error
-`unimplemented DCE control flow structure`, install `wasm-pack`
-from the `master` branch or wait for `wasm-pack 0.16.0` (which uses `v130`)
-```
-cargo install wasm-pack --git https://github.com/wasm-bindgen/wasm-pack --branch master
-```
-
-
-### WASM in Web Worker
-Since the main thread in web cannot block, you must use blocking operations in a 
-web worker, this include:
-1. Calling `join` on a JoinHandle
-2. Calling `recv` on a Receiver in the `std::sync` library or `oneshot` library.
-
-The [example](https://github.com/Pistonite/wasm-bindgen-spawn/tree/main/example) shows how to put the WASM module in the worker. You can
-then use some kind of RPC with `postMessage` to communicate between the main thread and the worker.
-This is probably something you have to do anyway to avoid the heavy, multithreaded computation freezing the UI.
-
+## Documentation
+- For setup, tutorial, and concepts, please refer to [the book](https://wbgspawn.pistonite.dev).
+- For technical reference, refer to [API documentation on docs.rs](https://docs.rs/wasm-bindgen-spawn).
+- There is also a [blog post](https://wbgspawn.psitonite.dev/design.html) I wrote when I first made this library

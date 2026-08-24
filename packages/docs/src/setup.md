@@ -5,6 +5,12 @@
 >
 > See [Support Matrix](./support.md)
 
+## Adding to Cargo dependency
+Please add `wasm-bindgen-spawn` as a Cargo dependency to your Rust WASM project.
+```
+cargo add wasm-bindgen-spawn
+```
+
 ## Cross-Origin Isolation
 You can read more about cross-origin isolation in [this web.dev article](https://web.dev/articles/coop-coep). TL;DR is:
 - This is required for `SharedArrayBuffer`
