@@ -1,11 +1,6 @@
 version: '3'
 
 includes:
-  # example:
-  #   aliases: [ex]
-  #   taskfile: ./example
-  #   dir: ./example
-  #
   common:
     taskfile: ./node_modules/mono-dev/task/common.yaml
     flatten: true
@@ -21,6 +16,7 @@ includes:
   lib:     { taskfile: packages/lib,        dir: packages/lib,        internal: true }
   test:    { taskfile: packages/test,       dir: packages/test,       internal: true }
   website: { taskfile: packages/website,    dir: packages/website,    internal: true }
+  docs:    { taskfile: packages/docs,       dir: packages/docs,       internal: true }
     
 
 tasks:
@@ -43,3 +39,5 @@ tasks:
     - task: test:check
     - task: website:check
     
+  build-doc:
+    - task: docs:build
