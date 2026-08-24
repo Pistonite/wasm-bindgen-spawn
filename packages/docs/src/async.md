@@ -2,15 +2,15 @@
 
 > [!IMPORTANT]
 > 
-> This chapter covers caveats when spawning a future as threads using the 
-> `spawn_async` API in this library. It is not a tutorial for async rust.
-> Basic understanding of async rust is required.
+> This chapter covers caveats when spawning a future as a thread using the 
+> `spawn_async` API in this library. It is not a tutorial for async Rust.
+> Basic understanding of async Rust is required.
 
 > [!CAUTION]
 > Async code also requires extreme caution when dealing with panics
 > and unhandled rejection!
 >
-> Please refer to [Async Panics](./panic.md#async-panics) after reading below
+> Please refer to [Async Panics](./panic.md#async-panics) after reading the sections below
 
 ## When an async thread is required
 If we only look at the Rust code, it's hard to imagine why the thread needs to be
@@ -33,7 +33,7 @@ let thread = std::thread::spawn(move || {
 });
 ```
 However, if we zoom out to include the *JS side*, we will see some problems
-with synchronous threads. Let's brainstorm this together: To make the code less verbose, suppose we import
+with synchronous threads. Let's brainstorm this together: to make the code less verbose, suppose we import
 this function from the JS side with `wasm_bindgen`:
 
 ```javascript
@@ -64,7 +64,7 @@ let thread = wasm_bindgen_spawn::spawn(move || {
 });
 ```
 
-What if like standard rust, we involve an async runtime?
+What if, like in standard Rust, we involve an async runtime?
 
 
 ```rust
@@ -82,7 +82,7 @@ let thread = wasm_bindgen_spawn::spawn(move || {
     let result = tokio::runtime::LocalRuntime::new()
         .unwrap().block_on(async move {
             let js_string = fetch_text("https://github.com").await.unwrap();
-            let rs_string: String = /* cast omited */ js_string;
+            let rs_string: String = /* cast omitted */ js_string;
             rs_string
         });
 
@@ -91,7 +91,7 @@ let thread = wasm_bindgen_spawn::spawn(move || {
 });
 ```
 
-This **does not work**! To see why let's trace the process:
+This **does not work**! To see why, let's trace the process:
 
 <img src="./images/async-doesnotwork-1.png" alt="Async does not work with tokio runtime, diagram" />
 
@@ -107,16 +107,16 @@ This **does not work**! To see why let's trace the process:
   - For a promise to resolve, the control must be yielded back to the JS event loop.
     It cannot happen while the JS event loop is executing JS code.
     The JS event loop is in a context that invoked the thread's main function,
-    which must finish first before it can do anything else that's scheduled
+    which must finish before it can do anything else that's scheduled.
   - However, the `block_on` implementation parks the thread until
     some future can be polled again (notified by the waker). It's waiting
-    for the JS event loop to resolve the future and wakes up the async runtime
+    for the JS event loop to resolve the future and wake up the async runtime
     in Rust.
 - We have a dead lock!
 
 
-So block on an async runtime does not work, but what if we use `js_sys::futures`
-runtime, which is backed by Promises and by-design driven co-operatively with
+So blocking on an async runtime does not work, but what if we use the `js_sys::futures`
+runtime, which is backed by Promises and by design driven co-operatively with
 the JS event loop?
 
 ```rust
@@ -133,7 +133,7 @@ let thread = wasm_bindgen_spawn::spawn(move || {
     // Want async? Maybe use js_sys::futures?
     js_sys::futures::spawn_local(async move {
         let js_string = fetch_text("https://github.com").await.unwrap();
-        let rs_string: String = /* cast omited */ js_string;
+        let rs_string: String = /* cast omitted */ js_string;
         // wait.. how do we return the result?
     });
 
@@ -143,7 +143,7 @@ let thread = wasm_bindgen_spawn::spawn(move || {
 ```
 
 Well, this time, there's no dead lock, but the future also does not execute at all.
-Let's again trace the execution
+Let's again trace the execution.
 
 <img src="./images/async-doesnotwork-2.png" alt="Async does not work with spawn_local, diagram" />
 
@@ -155,7 +155,7 @@ Let's again trace the execution
      just normal async Rust stuff, not JS-specific). In this runtime, when
      the waker is notified, it will then schedule to poll the future again
      after yielding to the JS event loop.
-3. JS Promises are *eager*, the promise is immediately scheduled onto the JS
+3. JS Promises are *eager*: the promise is immediately scheduled onto the JS
   event loop to execute.
 4. Then the thread's main function finishes
 5. The worker is terminated
@@ -167,8 +167,8 @@ to allow the JS event loop to do other things if the main function needs to `awa
 
 > [!NOTE]
 > Q: Wait! But you said "terminate the worker" when the thread is finished.
-> What if we just don't terminate the worker then the thread's main function
-> return?
+> What if we just don't terminate the worker when the thread's main function
+> returns?
 > 
 > A: Well, we still have to kill the thread when the main function finishes,
 > otherwise the worker will just be left alive idling.
@@ -185,8 +185,8 @@ to allow the JS event loop to do other things if the main function needs to `awa
 > ```
 
 ## `Send` bounds
-You may have noticed that the `spawn_async` API does not take a `impl Future`,
-but a `impl FnOnce() -> impl Future`. This is because the thread's main function
+You may have noticed that the `spawn_async` API does not take an `impl Future`,
+but an `impl FnOnce() -> impl Future`. This is because the thread's main function
 and the thread's future need to satisfy different *trait bounds* for the `Send`
 trait.
 
@@ -203,17 +203,17 @@ wasm_bindgen_spawn::spawn_async(async move {
 ```
 
 Recall that the `Send` trait is a marker trait for a type to be safe to send
-across thread boundary. Read more at [Rust API Docs](https://doc.rust-lang.org/std/marker/trait.Send.html).
+across thread boundaries. Read more at [Rust API Docs](https://doc.rust-lang.org/std/marker/trait.Send.html).
 
 Now consider `JsValue`, a concrete example of a type that does not implement `Send`.
 A `JsValue` is literally a reference to a value in the JS context. Obviously, you cannot reference the same value
 in other JS contexts (i.e. other threads).
 
-For a future to implement `Send`, it must be allowed to sent to another thread
-to continue execution (even during the middle of the execution, at `await` points).
+For a future to implement `Send`, it must be allowed to be sent to another thread
+to continue execution (even in the middle of the execution, at `await` points).
 But in our case, the future is only ever spawned locally on the thread's JS event loop,
-so it actually does not require `Send`. However if we drop the `Send` requirement,
-it will be more disasters:
+so it actually does not require `Send`. However, if we drop the `Send` requirement,
+it will be even more disastrous:
 
 ```rust
 // hmm let's do something with JS
@@ -238,7 +238,7 @@ This means:
 - It will return a future to continue to do async work locally in the spawned thread.
   This async work does not need to be `Send`.
 - But if the future captures anything from the spawning thread, it also requires
-  the sync closure to capture it, which requires all captured variables be `Send`.
+  the `Send` closure to capture it, which requires that all captured variables be `Send`.
 
 
 

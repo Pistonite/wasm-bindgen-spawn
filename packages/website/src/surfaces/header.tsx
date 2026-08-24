@@ -11,6 +11,7 @@ export const Header: React.FC = () => {
                 <h1 className="brand-title">wasm-bindgen-spawn playground</h1>
             </div>
             <div className="status-bar">
+                <Link href="https://wbgspawn.pistonite.dev">Docs</Link>
                 <Link href={GITHUB_LINK}>GitHub</Link>
                 <StatusItem label="CrossOriginIsolated" ok={globalThis.crossOriginIsolated} />
             </div>

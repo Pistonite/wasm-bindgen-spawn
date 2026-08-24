@@ -27,14 +27,15 @@ The threads proposal is currently in [phase 4](https://webassembly.org/features/
 
 ## Getting Started
 - See [Support Matrix](./support.md) for the toolchains, JS engine, and `wasm-pack` target support.
-- See [Setup Guide](./setup.md) for how to setup your project to use this library.
+- See [Setup Guide](./setup.md) for how to set up your project to use this library.
 - See [Playground](https://wbgspawn-playground.pistonite.dev) for runnable examples
   that also link to the example source code on GitHub.
 - The remaining chapters of the book cover basic usage of the library.
-  for advanced technical reference, see the [API documention on docs.rs](https://docs.rs/wasm-bindgen-spawn)
+  For advanced technical reference, see the [API documentation on docs.rs](https://docs.rs/wasm-bindgen-spawn)
 
 ## Special thanks
 - [`wasm-mt`](https://github.com/w3reality/wasm-mt) project for the links they put in the README
-  which sparked my interest to do a deep dive and ultimately create this project.
-- [`wasm-bindgen-rayon`](https://github.com/RReverser/wasm-bindgen-rayon/blob/main/README.md) project, which helped me understanding the prerequisites like [Cross-Origin Isolation](./setup.md#cross-origin-isolation)
+  which sparked my interest in doing a deep dive and ultimately creating this project.
+- [`wasm-bindgen-rayon`](https://github.com/RReverser/wasm-bindgen-rayon/blob/main/README.md)
+  project, which helped me understand the prerequisites like [Cross-Origin Isolation](./setup.md#cross-origin-isolation)
 - [Ciantic's experimental work](https://github.com/Ciantic/rust-shared-wasm-experiments) - very helpful in getting a basic example up and running

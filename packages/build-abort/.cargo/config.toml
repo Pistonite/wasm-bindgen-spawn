@@ -1,4 +1,4 @@
-# see https://wbgspawn.pistonite.dev
+# see https://wbgspawn.pistonite.dev/setup.html#rust-and-cargo-setup
 [env]
 WASM_BINDGEN_USE_JS_SYS="1"
 

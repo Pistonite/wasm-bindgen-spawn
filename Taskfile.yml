@@ -39,6 +39,12 @@ tasks:
     - task: example:check
     - task: test:check
     - task: website:check
+
+  fix:
+    - task: disp:fix
+    - task: test:fix
+    - task: website:fix
+    - cargo fmt
     
   build-doc:
     - task: docs:install

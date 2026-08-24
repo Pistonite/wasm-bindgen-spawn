@@ -2,11 +2,11 @@
 
 > [!IMPORTANT]
 > Ensure you are using a supported version of the tools and engines
-> as specified in the [Support Matrix](./support.md), and has read through
-> the required [Setups](./setup.md)
+> as specified in the [Support Matrix](./support.md), and have read through
+> the required [Setup Guide](./setup.md)
 >
 > This tutorial covers basic usage. For detailed technical reference please
-> refer to the [API Doc]() on docs.rs
+> refer to the [API Doc](https://docs.rs/wasm-bindgen-spawn) on docs.rs
 
 ## Creating the thread dispatcher
 The thread dispatcher is its own "thread" that allows new threads to be spawned
@@ -16,8 +16,8 @@ in the [Design Blog](./design.md)
 The thread dispatcher is initialized in 2 phases:
 1. Call one of the `init_bg_*` functions to create an instance of `ThreadDispatcherInit`.
 2. Use the JS Event Loop to wait for the thread dispatcher to be ready.
-   The `spawn()` API only works after the thread dispatcher is `await`-ed to be ready
-   to prevent dead locks trying to join a thread before the thread dispatcher is ready.
+   The `spawn()` API only works after the thread dispatcher is `await`-ed to be ready;
+   this prevents dead locks from trying to join a thread before the dispatcher is ready.
 
 ```rust
 // if you use wasm-pack build -t no-modules ...
@@ -29,8 +29,8 @@ let init = wasm_bindgen_spawn::init_bg_web(bg_script, wasm_bindgen::module());
 > [!NOTE]
 > Currently the `init_bg_*` function accepts the bindgen script
 > from either the `no-modules` or the `web` target in `wasm-pack`.
-> If your project uses another target, refer to [Wasm-pack Target Setup](./setup.md#wasm-pack-target).
-> To setup the required scripts.
+> If your project uses another target, refer to [Wasm-pack Target Setup](./setup.md#wasm-pack-target)
+> to set up the required scripts.
 > 
 > The `wasm_bindgen::module()` API is available in targets other than `bundler` and `deno`.
 > Refer to the same setup guide for how to pass in the value from the JS side in these targets.
@@ -75,7 +75,7 @@ await wasm_bindgen.init_thread_dispatcher(bindgenScript)
 Now the thread dispatcher is ready and you can spawn some threads!
 
 ## Spawn and join
-Spawn a thread with `wasm_bindgen_spawn::spawn()`, which has identical signature
+Spawn a thread with `wasm_bindgen_spawn::spawn()`, which has an identical signature
 to `std::thread::spawn`:
 
 ```rust
@@ -110,13 +110,13 @@ assert_eq!(output, 1);
 
 > [!IMPORTANT]
 > 
-> Before starting to use async threads, be sure to read read about the caveats,
+> Before starting to use async threads, be sure to read about the caveats,
 > including why `spawn_async` takes `move || async move {...}`, in
 > the [Working with Async code](./async.md) chapter.
 
 ## Non-blocking join
-Similar to the `JoinHandle` in Rust standard library, the `JoinHandle` in this library
-provides ways to perform non-blocking join of the thread.
+Similar to the `JoinHandle` in the Rust standard library, the `JoinHandle` in this library
+provides ways to perform a non-blocking join of the thread.
 
 ```rust
 let thread = wasm_bindgen_spawn::spawn(move || {
@@ -129,14 +129,14 @@ if thread.is_finished() {
 }
 ```
 
-The `JoinHandle` also implements `IntoFuture` for asynchronous join
+The `JoinHandle` also implements `IntoFuture` for an asynchronous join.
 
 ```rust
 let thread = wasm_bindgen_spawn::spawn(move || {
     /* ... */
 });
 // asynchronously join the thread: the async runtime may do other things
-// while the thread is not finished
+// while the thread is still running
 let output = thread.await.unwrap();
 ```
 
@@ -162,5 +162,5 @@ match thread.join() {
 > as well as panics in *detached futures*.
 >
 > This library tries to make it really hard for panics to turn into uncontrollable
-> failure if you do the right things. See the [Working with Panic]() chapter
+> failures if you do the right things. See the [Working with Panic](./panic.md) chapter
 > for more information

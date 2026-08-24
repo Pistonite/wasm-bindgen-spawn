@@ -16,8 +16,8 @@ You can read more about cross-origin isolation in [this web.dev article](https:/
 - This is required for `SharedArrayBuffer`
 - This is to mitigate Spectre-like attacks
 
-All frame and worker response from the web server that serves your project
-must send these headers to include cross-origin isolation:
+All frame and worker responses from the web server that serves your project
+must send these headers to enable cross-origin isolation:
 ```
 Cross-Origin-Embedder-Policy: require-corp
 Cross-Origin-Opener-Policy: same-origin
@@ -42,20 +42,20 @@ such as `console.log`.
 
 ## Rust and Cargo setup
 > [!CAUTION]
-> WASM Threading is not standized. Rust and `wasm-bindgen` frequently change
+> WASM Threading is not standardized. Rust and `wasm-bindgen` frequently change
 > the `RUSTFLAGS` needed to compile with threading support enabled. If you
 > cannot build with the example `.cargo/config.toml` in this guide, please
 > open an issue on GitHub.
 
-Nightly rust is needed to use the unstable features we depend on.
+Nightly Rust is needed to use the unstable features we depend on.
 
 There are 2 options:
-1. Add a `rust-toolchain` file to your crate or parent directories that indicate
+1. Add a `rust-toolchain` file to your crate or parent directories that indicates
    the version of the toolchain to use. For example:
    ```
    nightly
    ```
-   Or specify a specific version
+   Or specify an exact version
    ```
    nightly-2026-08-23
    ```
@@ -64,11 +64,11 @@ There are 2 options:
    cargo +nightly
    ```
 
-For cargo project setup, there are 2 places that needs change.
-First add a `.cargo/config.toml` file in the root of your crate
+For cargo project setup, there are 2 places that need changes.
+First, add a `.cargo/config.toml` file in the root of your crate
 
 > [!NOTE]
-> Enabling `panic=unwind` is recommended for better experience working with panics
+> Enabling `panic=unwind` is recommended for a better experience working with panics
 > in threads. However, there are some caveats. Please refer to
 > the [Panic Guide](./panic.md)
 >
@@ -104,7 +104,7 @@ rustflags = [
 # 2024-10-01 - It now works, but threading works without it. So probably best to wait for it to stabilize.
 # 2025-06-12 - mutable-globals is enabled by default, and bulk-memory is enabled by default on Rust 1.87+
 # 2025-10-02 - rust now requires extra -Clink-args to enable shared-memory, see https://github.com/rust-lang/rust/pull/147225
-# 2026-08-11 - Since WBG 0.2.122 / Rust nighty 2026-05-06, __heap_base needs to be explicitly exported.
+# 2026-08-11 - Since WBG 0.2.122 / Rust nightly 2026-05-06, __heap_base needs to be explicitly exported.
 
 [unstable]
 build-std = ["panic_unwind", "std"] # -- change "panic_unwind" to "panic_abort" if you use panic=abort
@@ -142,15 +142,12 @@ See [Support Matrix](./support.md#wasm-pack-target-support) for the Target x JS 
 support status.
 
 > [!NOTE]
-> The examples use `wasm-bindgen-futures` (now `js_sys::futures`) to export async
-> Rust functions that can be `await`-ed in JS. You can also use the API that
-> returns `Promise` and return that to JS to be awaited to avoid depending
-> on `js-sys` or `wasm-bindgen-futures` yourself.
-> 
-> See [API Docs]()
+> The examples export async Rust functions that can be `await`-ed in JS.
+> This feature requires additional dependencies. See [API Usage](./basic_example.md)
+> for details as well as a version of the API that does not require additional dependencies.
 
 ### `no-modules` and `web`
-If you use `no-modules` or `web` target, no additional setup is needed on the
+If you use the `no-modules` or `web` target, no additional setup is needed on the
 `wasm-pack` side. Use `wasm_bindgen_spawn::init_bg_no_modules` or `wasm_bindgen_spawn::init_bg_web`
 accordingly:
 
@@ -163,7 +160,7 @@ const bindgenScriptLocation = location.origin + "/path/to/package_name.js";
 const bindgenScript = await (await fetch(bindgenScriptLocation)).text();
 
 // now initialize the wasm package
-// here, assuming our target is web we can import the same path as an ESM.
+// here, assuming our target is web, we can import the same path as an ESM.
 // for no-modules, it will require extra build config, such as inlining the bindgen
 // script into your code.
 const wasm_bindgen = await import(bindgenScriptLocation);
@@ -224,12 +221,12 @@ const bindgenScript = fs.readFileSync("normal-output/my_package_no_modules.js", 
 await wasm_bindgen.init_thread_dispatcher(bindgenScript);
 ```
 
-See the `no-modules`/`web` section for the rust side
+See the `no-modules`/`web` section for the Rust side.
 
 ### `deno`
 The `deno` target requires:
-1. A copy of the bindgen script for either the `no-modules` or `web` target
-   like `nodejs`.
+1. A copy of the bindgen script for either the `no-modules` or `web` target,
+   like the `nodejs` target.
 2. The WASM module bytes
 
 Here we use `no-modules` as an example. See the `nodejs` section for the `wasm-pack` commands.
@@ -263,9 +260,9 @@ pub async fn init_thread_dispatcher_with_wasm(bg_script: JsValue, wasm_bytes: Js
 
 ### `bundler`
 The `bundler` target requires:
-1. A copy of the bindgen script for either the `no-modules` or `web` target
-   like `nodejs` and `deno` targets.
-2. The WASM module bytes, like `deno`.
+1. A copy of the bindgen script for either the `no-modules` or `web` target,
+   like the `nodejs` and `deno` targets.
+2. The WASM module bytes, like the `deno` target.
 3. A bundler to bundle the code generated by wasm-pack.
 
 See the `nodejs` section above for how to generate the additional bindgen script.
@@ -296,4 +293,4 @@ const wasmBytes = await wasmResponse.arrayBuffer();
 await wasm_bindgen.init_thread_dispatcher_with_wasm(bindgenScript, wasmBytes);
 ```
 
-See `deno` section above for the Rust side.
+See the `deno` section above for the Rust side.

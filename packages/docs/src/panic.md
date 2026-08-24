@@ -11,10 +11,10 @@
 > and [Handling Aborts](https://wasm-bindgen.github.io/wasm-bindgen/reference/handling-aborts.html)
 > in the `wasm-bindgen` guide.
 
-In Rust, panic is a feature to trigger alternate control flow similar to exceptions in other languages.
+In Rust, panic is a feature that triggers alternate control flow, similar to exceptions in other languages.
 
 ## Abort vs. Unwind
-Historically when `panic=unwind` was not supported, panics triggers `unreachable` instruction
+Historically, when `panic=unwind` was not supported, panics triggered the `unreachable` instruction
 in WASM, which causes a dreaded `Runtime Error: unreachable` in JS:
 
 ```javascript
@@ -39,7 +39,7 @@ Runtime Error: unreachable
 <some unreadable stack trace>
 ```
 
-Historically, the debugability issue is solved by using a panic hook to print the panic information
+Historically, the debuggability issue is solved by using a panic hook to print the panic information
 before `unreachable` is triggered. However, it does not fix the fact that a panic hard-aborts the WASM instance, meaning:
 - Variables are not dropped. Memory will leak.
 - Mutexes are not poisoned. If a thread panics while holding a mutex, the mutex will never be released.
@@ -50,12 +50,12 @@ before `unreachable` is triggered. However, it does not fix the fact that a pani
 With `panic=unwind` however, things "just work":
 - Variables are dropped during unwind, cleaning up memory.
 - Mutexes are also dropped during unwind, causing them to poison rather than lock forever.
-- `catch_unwind` may be used to pause the unwind and inspect the payload, optionally recover.
+- `catch_unwind` may be used to pause the unwind, inspect the payload, and optionally recover.
 - The WASM instance is not aborted
-- In `wasm-bindgen`, unwinds across the JS-Rust boundary manifests as `PanicError`.
+- In `wasm-bindgen`, unwinds across the JS-Rust boundary manifest as a `PanicError`.
 
-Note that however, hard-aborts can still happen even when `panic=unwind`, meaning this library
-needs to handle `abort`s if `panic=unwind` and *both* `abort`s and `unwind`s if `panic=unwind`.
+Note, however, that hard aborts can still happen even when `panic=unwind`, meaning this library
+needs to handle `abort`s if `panic=abort` and *both* `abort`s and `unwind`s if `panic=unwind`.
 
 
 ## Panic from a synchronous thread
@@ -81,7 +81,7 @@ The difference is the panic payload:
 
 ## Async panics
 > [!NOTE]
-> Please refer to [Working woth Async code](./async.md) for the `spawn_async` API
+> Please refer to [Working with Async code](./async.md) for the `spawn_async` API
 
 When an asynchronous thread panics, it is trickier to deal with. To see why, let's consider
 the following example:
@@ -103,7 +103,7 @@ Let's trace the process to see exactly how this works:
 
 <img src="./images/async-panic.png" alt="async panic diagram" />
 
-1. We will start from calling `do_something_async` and ignoring everything happened before it for simplicity.
+1. We will start from calling `do_something_async` and ignore everything that happened before it for simplicity.
 2. `do_something_async` schedules some async work, returning a promise to Rust
 3. Rust `await`s the promise by attaching the waker to the promise.
 4. When the async work is done, the JS event loop calls the `then` callback on the promise.
@@ -115,8 +115,8 @@ Let's trace the process to see exactly how this works:
 8. Since the polling never returned, the future is leaked, and the main thread's future
    will never finish, leaving the worker and the thread hanging.
 > [!NOTE]
-> In native JS runtimes, unhandled rejection will kill the worker directly, leading
-> to memory leak in Rust and the thread hanging. In browsers, unhandled rejections are ignored.
+> In native JS runtimes, an unhandled rejection will kill the worker directly, leading
+> to a memory leak in Rust and the thread hanging. In browsers, unhandled rejections are ignored.
 
 > [!NOTE]
 > The `JsFuture` implementation does have a `.catch` callback registered. However, it does
@@ -139,7 +139,7 @@ Let's trace the process to see exactly how this works:
 
 While there is not a single "right" behavior for async panics, this library took inspiration from `tokio`,
 whose runtime captures any async panic and reports it to the `JoinHandle` for the task.
-This library does the same by:
+This library does the same:
 - A thread-local "worker runtime" is installed to allow notifying the join handle and terminating the worker anywhere
   within Rust.
 - The thread's main future is double-wrapped with JS `try/catch` and Rust `catch_unwind`.
@@ -147,8 +147,8 @@ This library does the same by:
     and the worker is then terminated.
   - if a hard abort is caught by the JS `try/catch`, Rust code is no longer safe to call,
     so the worker is terminated directly from JS code, without returning the control to Rust again.
-    In this case, the worker notifies the thread dispatcher before termination and let the dispatcher
-    notifies the join handle about the hard panic.
+    In this case, the worker notifies the thread dispatcher before termination and lets the dispatcher
+    notify the join handle about the hard panic.
 
 With this, you can safely run this code and ensure the worker does not hang forever, in both `panic=abort`
 and `panic=unwind`. In `panic=unwind` you will also get the panic message in the `Err` returned.
@@ -171,7 +171,7 @@ for example due to the `JoinHandle` being dropped. You can do this in many frame
 for example:
 - In standard Rust, calling `std::thread::spawn` and dropping the `JoinHandle`.
 - In Tokio, calling `tokio::task::spawn` and dropping the `JoinHandle`.
-- In JS, spawning a future without `await`-ing or attaching `.then`/`.catch` callbacks, or keeping
+- In JS, spawning a future without `await`-ing it, attaching `.then`/`.catch` callbacks, or keeping
   a reference to that promise.
 
 The last point is what we need to worry about here. You can spawn a Rust future
@@ -193,15 +193,15 @@ let handle = wasm_bindgen_spawn::spawn_async(|| async {
 });
 ```
 
-What happens in this case depends on the runtime
+What happens in this case depends on the runtime:
 - In native runtimes, the unhandled rejection causes the worker to terminate,
   so the thread will hang forever.
 - In browsers, unhandled rejections are ignored, so the panic is ignored.
   If other futures continue to execute Rust code when `panic=abort`, it's not safe
-  and you may observe other weird errors/aborts
+  and you may observe other weird errors/aborts.
 
 To mitigate this, you should use `wasm_bindgen_spawn::spawn_local` in worker threads.
-This spawns the future wrapped with hooking into the "worker runtime" as described
+This spawns the future wrapped with the hooks into the "worker runtime" described
 above, and will reliably terminate the worker and notify the join handle when
 panics are detected.
 
@@ -218,17 +218,17 @@ let handle = wasm_bindgen_spawn::spawn_async(|| async {
 ```
 
 > [!WARNING]
-> Note this is still not a bullet-proof vest to threads hanging. Other unhandled rejection
-> can still happen and there is not a one-size-fit-all way to deal with it. For example:
+> Note this is still not a bullet-proof vest against threads hanging. Other unhandled rejections
+> can still happen and there is not a one-size-fits-all way to deal with them. For example:
 > ```rust
 > wasm_bindgen_spawn::spawn_async(|| async {
 >    Function::new_no_args("void (async function() { throw new Error('hi') })()")
 >       .call0(&JsValue::undefined());
 > });
 > ```
-> The code above triggers a harmless unhandled rejection. In browsers, it's ignored,
+> The code above triggers a harmless unhandled rejection. In browsers, it's ignored;
 > in native runtimes, the worker is terminated and the thread hangs.
 >
-> In the future this crate may install unhandled rejection handler or
+> In the future this crate may install an unhandled rejection handler or
 > provide some utilities to run custom setup JS in the worker's
 > context to deal with these cases.

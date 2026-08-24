@@ -18,7 +18,7 @@ jobs:
           tool-mdbook: true
       - run: task build-doc
       - uses: actions/upload-pages-artifact@v5
-        # if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request'
         with:
           path: packages/docs/book
           retention-days: 3
@@ -27,7 +27,7 @@ jobs:
     name: deploy-docs
     needs:
       - docs
-    # if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request'
     permissions:
       pages: write
       id-token: write
