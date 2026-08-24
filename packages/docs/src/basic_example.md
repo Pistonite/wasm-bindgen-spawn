@@ -11,7 +11,7 @@
 ## Creating the thread dispatcher
 The thread dispatcher is its own "thread" that allows new threads to be spawned
 without the need to rely on the JS event loop. You may read more about this design
-in the [Design Blog](./design/index.md)
+in the [Design Blog](./design.md)
 
 The thread dispatcher is initialized in 2 phases:
 1. Call one of the `init_bg_*` functions to create an instance of `ThreadDispatcherInit`.

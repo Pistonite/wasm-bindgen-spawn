@@ -93,7 +93,7 @@ let thread = wasm_bindgen_spawn::spawn(move || {
 
 This **does not work**! To see why let's trace the process:
 
-<img src="./async/async-doesnotwork-1.png" alt="Async does not work with tokio runtime, diagram" />
+<img src="./images/async-doesnotwork-1.png" alt="Async does not work with tokio runtime, diagram" />
 
 1. The JS worker spins up and invokes the thread's main function.
 2. The thread enters an async runtime within Rust.
@@ -145,7 +145,7 @@ let thread = wasm_bindgen_spawn::spawn(move || {
 Well, this time, there's no dead lock, but the future also does not execute at all.
 Let's again trace the execution
 
-<img src="./async/async-doesnotwork-2.png" alt="Async does not work with spawn_local, diagram" />
+<img src="./images/async-doesnotwork-2.png" alt="Async does not work with spawn_local, diagram" />
 
 1. The JS worker spins up and invokes the thread's main function.
 2. The thread spawns a `JsFuture`, which is backed by a `Promise`.
