@@ -11,7 +11,7 @@ use crate::util::{Value, ValueReceiver, ValueReceiverAsync, WorkerPanic, WorkerR
 /// as long as you are not calling `.thread()` (which currently doesn't have a good use case -
 /// if you do have one please open an issue on GitHub).
 ///
-/// JoinHandle also implements [`IntoFuture`](std::future::IntoFuture) so you can join a thread
+/// `JoinHandle` also implements [`IntoFuture`](std::future::IntoFuture) so you can join a thread
 /// asynchronously by `await`-ing it.
 pub struct JoinHandle<T: Send + 'static> {
     id: usize,
@@ -29,9 +29,9 @@ impl<T: Send + 'static> JoinHandle<T> {
     }
 
     /// Block the current thread until the thread is finished.
-    /// Returns the value returned by the threads' main closure/future.
+    /// Returns the value returned by the thread's main closure/future.
     ///
-    /// This function should behave similarly to [`std::thread::JoinHandle::join`]
+    /// This function should behave similarly to [`std::thread::JoinHandle::join`].
     ///
     /// To asynchronously join the thread you can `await` the join handle instead of calling
     /// `.join()`.
@@ -40,8 +40,8 @@ impl<T: Send + 'static> JoinHandle<T> {
     /// If `panic=abort`, the panic will still be caught and this function will return
     /// `Err` with a generic message, instead of triggering another panic.
     ///
-    /// For more information on unwind and catching panics, see the [wasm-bindgen book](https://wasm-bindgen.github.io/wasm-bindgen/reference/catch-unwind.html)
-    /// or the crate's README.
+    /// For more information on unwind and catching panics, see
+    /// [Working with Panic](https://wbgspawn.pistonite.dev/panic.html) in the book
     pub fn join(self) -> Result<T, Box<dyn Any + Send + 'static>> {
         handle_join_result(self.id, self.recv.recv())
     }
@@ -53,7 +53,7 @@ impl<T: Send + 'static> JoinHandle<T> {
     }
 }
 
-#[doc(hidden)]
+/// [`IntoFuture`] implementation for [`JoinHandle`]
 pub struct AsyncJoinHandle<T: Send + 'static> {
     id: usize,
     recv: ValueReceiverAsync,

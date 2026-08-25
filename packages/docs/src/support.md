@@ -80,3 +80,56 @@ Notes:
   is modern and uses ESM. You either need to rename the generated script to use the `.cjs` extension
   or remove `"type": "module"` from `package.json`, which may have additional consequences.
 
+## Rust `std` API support
+
+If a `std` API is supported, it means you can use it with the threading model
+of this library and expect behavior similar to a tier-1 Rust target.
+
+> [!TIP]
+> You can use the [Playground](https://wbgspawn-playground.pistonite.dev)
+> to see the examples listed below in action.
+> The playground also links you to the source of the examples.
+
+> [!NOTE]
+> Legend:
+> - ✅ Supported.
+> - 🟢 Not supported but a similar API is provided by this crate (for example `spawn`). <!-- TODO: link `spawn` to docs.rs fn.spawn.html once published -->
+> - ⚠️ Not tested but likely to be supported.
+> - ❓ Not tested and unsure if supported.
+> - ⛔ Unsupported.
+
+|API|Supported?|Example|
+|-|-|-|
+|[`std::sync::atomics::*`](https://doc.rust-lang.org/std/sync/atomic/)<sup>1</sup>| ✅  |`example_arc_atomic`|
+|[`std::sync::mpsc::*`](https://doc.rust-lang.org/std/sync/mpsc/index.html) | ✅  |`example_mpsc_channel`|
+|[`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html) | ✅  |`example_arc_atomic`|
+|[`std::sync::Barrier`](https://doc.rust-lang.org/std/sync/struct.Barrier.html) | ⚠️   |No tests yet|
+|[`std::sync::Condvar`](https://doc.rust-lang.org/std/sync/struct.Condvar.html) | ⚠️   |No tests yet|
+|[`std::sync::LazyLock`](https://doc.rust-lang.org/std/sync/struct.LazyLock.html) | ⚠️   |No tests yet|
+|[`std::sync::Mutex`](https://doc.rust-lang.org/std/sync/struct.Mutex.html)<sup>2</sup> | ✅  |`example_mutex` `example_mutex_poison`|
+|[`std::sync::Once`](https://doc.rust-lang.org/std/sync/struct.Once.html) |   ⚠️  |No tests yet|
+|[`std::sync::OnceLock`](https://doc.rust-lang.org/std/sync/struct.OnceLock.html) |   ⚠️  |No tests yet|
+|[`std::sync::RwLock`](https://doc.rust-lang.org/std/sync/struct.RwLock.html) |   ⚠️  |No tests yet|
+|[`std::sync::Weak`](https://doc.rust-lang.org/std/sync/struct.Weak.html) |   ⚠️  |No tests yet|
+|[`std::thread::Builder`](https://doc.rust-lang.org/std/thread/struct.Builder.html) |   ⛔ <sup>3</sup> |
+|[`std::thread::JoinHandle`](https://doc.rust-lang.org/std/thread/struct.JoinHandle.html) |   🟢 |
+|[`std::thread::LocalKey`](https://doc.rust-lang.org/std/thread/struct.LocalKey.html) and `thread_local!` |   ✅  |No tests yet|
+|[`std::thread::Thread::id()`](https://doc.rust-lang.org/std/thread/struct.Thread.html) and `ThreadId` |   ✅  |Used by harness|
+|[`std::thread::Thread::name()`](https://doc.rust-lang.org/std/thread/struct.Thread.html) |   ❓   |No tests yet|
+|[`std::thread::Thread::unpack()`](https://doc.rust-lang.org/std/thread/struct.Thread.html) |   ❓   |No tests yet|
+|[`std::thread::available_parallelism`](https://doc.rust-lang.org/std/thread/fn.available_parallelism.html) |   ⛔ <sup>4</sup>  |`example_available_parallelism`|
+|[`std::thread::current`](https://doc.rust-lang.org/std/thread/fn.current.html) |   ✅  |Used by harness|
+|[`std::thread::panicking`](https://doc.rust-lang.org/std/thread/fn.panicking.html) |  ❓  |No tests yet|
+|[`std::thread::park`](https://doc.rust-lang.org/std/thread/fn.park.html) |  ❓  |No tests yet|
+|[`std::thread::scope`](https://doc.rust-lang.org/std/thread/fn.scope.html) |   ⛔ <sup>3</sup> |
+|[`std::thread::sleep`](https://doc.rust-lang.org/std/thread/fn.sleep.html) |    ✅  |`example_mutex` `example_mpsc_channel`|
+|[`std::thread::spawn`](https://doc.rust-lang.org/std/thread/fn.spawn.html) |     🟢  | |
+|[`std::thread::yield_now`](https://doc.rust-lang.org/std/thread/fn.yield_now.html) |   ⛔ <sup>5</sup>  | |
+
+Notes:
+- <sup>1</sup>: Atomics are part of the WASM threading proposal.
+- <sup>2</sup>: Poisoning works when `panic=unwind`.
+- <sup>3</sup>: A similar API might be added to this crate in the future.
+- <sup>4</sup>: Use `navigator.hardwareConcurrency`.
+- <sup>5</sup>: To run the thread co-operatively with the JS event loop, use `spawn_async`. <!-- TODO: link `spawn_async` to docs.rs fn.spawn_async.html once published -->
+

@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > 
 > This chapter covers caveats when spawning a future as a thread using the 
-> `spawn_async` API in this library. It is not a tutorial for async Rust.
+> `spawn_async` API in this library. It is not a tutorial for async Rust. <!-- TODO: link `spawn_async` to docs.rs fn.spawn_async.html once published -->
 > Basic understanding of async Rust is required.
 
 > [!CAUTION]
@@ -39,7 +39,7 @@ this function from the JS side with `wasm_bindgen`:
 ```javascript
 async function fetch_text(url) {
     const response = await fetch(url);
-    const text = await url.text();
+    const text = await response.text();
     return text;
 }
 ```
@@ -48,7 +48,7 @@ async function fetch_text(url) {
 
 #[wasm_bindgen]
 extern "C" {
-    fn fetch_text(url: &str): Promise;
+    fn fetch_text(url: &str) -> Promise;
 }
 
 let thread = wasm_bindgen_spawn::spawn(move || {
@@ -71,7 +71,7 @@ What if, like in standard Rust, we involve an async runtime?
 
 #[wasm_bindgen]
 extern "C" {
-    fn fetch_text(url: &str): Promise;
+    fn fetch_text(url: &str) -> Promise;
 }
 
 let thread = wasm_bindgen_spawn::spawn(move || {
@@ -123,7 +123,7 @@ the JS event loop?
 
 #[wasm_bindgen]
 extern "C" {
-    fn fetch_text(url: &str): Promise;
+    fn fetch_text(url: &str) -> Promise;
 }
 
 let thread = wasm_bindgen_spawn::spawn(move || {

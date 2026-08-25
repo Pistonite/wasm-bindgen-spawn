@@ -37,10 +37,13 @@ __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>)
         wasm_bindgen.__unsafe_pistonite_wbgspawn_send_signal(start_send);
         __debug("[disp-thread] start signal sent");
         while (true) {
-            // block on the mpsc channel to receive spawn requests
+            // waiting on the mpsc channel to receive spawn requests
+            // this now uses tokio::sync::mpsc which is an async channel
+            // and thankfully runtime agnostic; this means the dispatcher
+            // is able to do other stuff while waiting to spawn new threads.
             __debug("[disp-thread] parking on recv");
             const p = await wasm_bindgen.__pistonite_wbgspawn_dispatch_recv(recv);
-            // the sender (ThreadCreator) is dropped, terminate the dispatcher
+            // the sender is dropped, terminate the dispatcher
             if (!p) {
                 break;
             }
@@ -85,6 +88,9 @@ __export = async (wasm_bindgen_module: WorkerInitArgs | Promise<WorkerInitArgs>)
                     }
                 });
             });
+            // TODO - this might not be necessary anymore since receiving
+            // does not block the worker
+            //
             // similar to the comment in create.ts, if we block the dispatcher
             // immediately for receiving the next spawn request, the postMessage
             // could never fire and thus never spawn the thread onto the worker,

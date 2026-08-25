@@ -100,7 +100,7 @@ pub fn __pistonite_wbgspawn_dispatch_recv(
 ) -> js_type!(Promise<Option<DispatchThreadRequest>>) {
     js_sys::futures::future_to_promise(AssertUnwindSafe(async move {
         // safety: the dispatcher sender/receiver channel is only created/used
-        // in ThreadCreator::unready and dispatcher.ts. ThreadCreator creates
+        // in create_dispatcher and dispatcher.ts. create_dispatcher creates
         // the receiver pointer with into_js
         let recv: &mut DispatchReceiver = unsafe { borrows_recv.as_mut().unwrap_unchecked() };
         let (closure, sender) = match recv.recv().await {
@@ -123,16 +123,12 @@ pub fn __pistonite_wbgspawn_dispatch_recv(
     .into()
 }
 
-/// For generating glue in TS
-#[doc(hidden)]
-pub type DispatchThreadRequest = Vec<JsValue>;
-
 /// Drop the receiver
 #[doc(hidden)]
 #[wasm_bindgen(skip_typescript)]
 pub fn __pistonite_wbgspawn_dispatch_drop(moves_recv: *mut DispatchReceiver) {
     // safety: the dispatcher sender/receiver channel is only created/used
-    // in ThreadCreator::unready and dispatcher.ts. ThreadCreator creates
+    // in create_dispatcher and dispatcher.ts. create_dispatcher creates
     // the receiver pointer with into_js
     let recv: Box<DispatchReceiver> = unsafe { from_js(moves_recv) };
     drop(recv);

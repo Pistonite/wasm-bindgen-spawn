@@ -16,18 +16,19 @@ thread_local! {
     static IS_WORKER: RefCell<bool> = const { RefCell::new(false) };
 }
 
-/// Run the thread's main future. Return a JS Promise that should be sent
+/// Run the thread's main future. Returns a JS Promise that should be sent
 /// to the JS side and awaited
 pub fn thread_main(
     proc: Box<ThreadProc>,
     maybe_moves_sender: raw_ptr_type!(ValueSender),
 ) -> JsValue {
     // run the synchronous part to get a future
-    // if the synchronous part panics, it will raise a JS exception
+    // if the synchronous part hard aborts, it will raise a JS exception
     // that will be caught in the worker JS code
     let fut = if cfg!(panic = "unwind") {
         match std::panic::catch_unwind(AssertUnwindSafe(proc)) {
             Err(e) => {
+                // safety: sender is from spawn(), where into_raw is called
                 let sender = unsafe { ValueSender::from_raw(maybe_moves_sender) };
                 let _ = sender.send(Err(WorkerPanic { payload: Some(e) }));
                 return JsValue::undefined();
@@ -59,6 +60,7 @@ pub fn thread_main(
 
         // hopefully if we got to this point, there is no observed panic, meaning the value is valid
         if let Some(sender) = RUNTIME.with_borrow_mut(|x| x.take()) {
+            // safety: sender is from spawn(), where into_raw is called
             let sender = unsafe { ValueSender::from_raw(sender) };
             let _ = sender.send(Ok(result));
         }
@@ -69,17 +71,13 @@ pub fn thread_main(
     promise.into()
 }
 
-/// Schedule a task in the JS Event Loop to drive the rust future.
+/// Schedule a task in the JS Event Loop to drive the Rust future.
 ///
 /// This is a wrapper for [`js_sys::futures::spawn_local`] that hooks into
 /// the worker thread's runtime to handle any panics in the async task.
 /// This version of `spawn_local` will ensure the join handle is notified of the panic
 /// and the worker is terminated. Without this wrapper, async panics might
-/// leave the main thread's future hang forever.
-///
-/// In hard aborts when `panic=unwind` or any panic when `panic=abort`, `drop`
-/// implementations will not run and will unfortunately leave leaked memory
-/// in the underlying shared memory buffer.
+/// leave the main thread's future hanging forever.
 pub fn spawn_local<F>(future: F)
 where
     F: Future<Output = ()> + 'static,
@@ -97,11 +95,11 @@ where
 }
 
 /// Adopted from
-/// https://github.com/wasm-bindgen/wasm-bindgen/issues/2392#issuecomment-758892311
+/// <https://github.com/wasm-bindgen/wasm-bindgen/issues/2392#issuecomment-758892311>
 ///
 /// Wrap each poll with a JS try-catch AND catch_unwind (if panic=unwind). If either a soft
 /// or hard panic is caught, terminate the worker thread. The join handle will then be notified
-/// of this panic
+/// of this panic.
 struct LocalTryOrAbort<F: ?Sized> {
     try_or_abort_fn: Function,
     f: F,

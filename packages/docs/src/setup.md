@@ -33,7 +33,7 @@ console.log(globalThis.crossOriginIsolated); // true
 
 ## Caveat about blocking operations
 Browsers [do not allow the main thread to be blocked by Atomics](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics#:~:text=(Most%20browsers%20will%20not%20allow%20wait()%20on%20the%20browser%27s%20main%20thread.)).
-Therefore, any blocking operations such as calling `.join()` on a thread's join handle,
+Therefore, any blocking operations such as calling `.join()` on a thread's join handle, <!-- TODO: link `.join()` to docs.rs struct.JoinHandle.html#method.join once published -->
 or `.lock()` on a `Mutex`, must be done in a Web Worker.
 
 Native engines typically do not have this restriction, although blocking
@@ -144,11 +144,11 @@ support status.
 > [!NOTE]
 > The examples export async Rust functions that can be `await`-ed in JS.
 > This feature requires additional dependencies. See [API Usage](./basic_example.md)
-> for details as well as a version of the API that does not require additional dependencies.
+> for details.
 
 ### `no-modules` and `web`
 If you use the `no-modules` or `web` target, no additional setup is needed on the
-`wasm-pack` side. Use `wasm_bindgen_spawn::init_bg_no_modules` or `wasm_bindgen_spawn::init_bg_web`
+`wasm-pack` side. Use `wasm_bindgen_spawn::init_bg_no_modules` or `wasm_bindgen_spawn::init_bg_web` <!-- TODO: link to docs.rs fn.init_bg_no_modules.html and fn.init_bg_web.html once published -->
 accordingly:
 
 ```javascript
@@ -182,7 +182,7 @@ use wasm_bindgen::prelude::*;
 pub async fn init_thread_dispatcher(bg_script: JsValue) {
     // call init_bg_no_modules if the script format is no-modules
     wasm_bindgen_spawn::init_bg_web(bg_script, wasm_bindgen::module())
-        .create_dispatcher().await;
+        .create_dispatcher().await.unwrap();
     // once the future/promise returned by create_dispatcher/create_dispatcher_promise
     // is resolved, you can start spawning threads.
 }
@@ -191,7 +191,7 @@ pub async fn init_thread_dispatcher(bg_script: JsValue) {
 ### `nodejs`
 > [!WARNING]
 > 
-> The `nodejs` target emits CommonJS which is not recommended in modern projects.
+> The `nodejs` target emits CommonJS, which is not recommended in modern projects.
 > You may have to change the file extension of the bindgen script to `.cjs`.
 
 First, you need to generate a copy of the bindgen script for either the `no-modules`
@@ -211,7 +211,7 @@ mv normal-output/my_package.js normal-output/my_package.cjs
 
 ```javascript
 // JS Side, native engine (NodeJS or Bun)
-import "fs" from "node:fs";
+import fs from "node:fs";
 
 // the nodejs target script will auto-init the wasm module 
 const wasm_bindgen = await import("normal-output/my_package.cjs");
@@ -227,18 +227,22 @@ See the `no-modules`/`web` section for the Rust side.
 The `deno` target requires:
 1. A copy of the bindgen script for either the `no-modules` or `web` target,
    like the `nodejs` target.
-2. The WASM module bytes
+2. Input to `initSync` in `wasm_bindgen`, which is the WASM module bytes (`ArrayBuffer` or JS Typed Array) or an instance of `WebAssembly.Module`.
+   > [!TIP]
+   > The example below reads the bytes, but you can also create the Module yourself
+   > with, for example, the [`WebAssembly.compileStreaming`](https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/JavaScript_interface/compileStreaming_static)
+   > API, if that is easier to integrate into your existing project or bundler setup.
 
 Here we use `no-modules` as an example. See the `nodejs` section for the `wasm-pack` commands.
 
 ```javascript
 // JS Side, native engine (Deno or Bun)
-import "fs" from "node:fs";
+import fs from "node:fs";
 // the deno target script will auto-init the wasm module 
 const wasm_bindgen = await import("normal-output/my_package.js");
 // we also need to read the no_modules script
 const bindgenScript = fs.readFileSync("normal-output/my_package_no_modules.js", "utf8");
-// we also need to read a copy of the wasm
+// we also need to read a copy of the wasm bytes
 const wasmBytes = fs.readFileSync("normal-output/my_package_bg.wasm");
 // now we can initialize wasm-bindgen-spawn
 await wasm_bindgen.init_thread_dispatcher_with_wasm(bindgenScript, wasmBytes);
@@ -252,7 +256,7 @@ use wasm_bindgen::prelude::*;
 pub async fn init_thread_dispatcher_with_wasm(bg_script: JsValue, wasm_bytes: JsValue) {
     // call init_bg_web if the script format is web
     wasm_bindgen_spawn::init_bg_no_modules(bg_script, wasm_bytes)
-        .create_dispatcher().await;
+        .create_dispatcher().await.unwrap();
     // once the future/promise returned by create_dispatcher/create_dispatcher_promise
     // is resolved, you can start spawning threads.
 }
@@ -262,7 +266,11 @@ pub async fn init_thread_dispatcher_with_wasm(bg_script: JsValue, wasm_bytes: Js
 The `bundler` target requires:
 1. A copy of the bindgen script for either the `no-modules` or `web` target,
    like the `nodejs` and `deno` targets.
-2. The WASM module bytes, like the `deno` target.
+2. The WASM module (`ArrayBuffer`, JS Typed Array, or `WebAssembly.Module`), for passing into `initSync`, like the `deno` target.
+   > [!TIP]
+   > The example below reads the bytes, but you can also create the Module yourself
+   > with, for example, the [`WebAssembly.compileStreaming`](https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/JavaScript_interface/compileStreaming_static)
+   > API, if that is easier to integrate into your existing project or bundler setup.
 3. A bundler to bundle the code generated by wasm-pack.
 
 See the `nodejs` section above for how to generate the additional bindgen script.
@@ -278,7 +286,7 @@ export default defineConfig({
 });
 ```
 
-Again using `vite` as an example, we may import the raw script using the `?raw` parameter.
+Again using `vite` as an example, we may import the raw script with the `?raw` parameter.
 
 ```javascript
 // the bundler must initialize the wasm instance
@@ -286,7 +294,7 @@ import wasm_bindgen from "my-wasm-pack-output";
 import bindgenScript from "my-wasm-pack-output/my_package_no_modules.js?raw";
 // currently there's no built-in way to import as binary, so we use the url method
 // or you may use another plugin to load an asset as bytes
-const wasmResponse = await fetch(new Url("my-wasm-pack-output/my_package_bg.wasm", import.meta.url));
+const wasmResponse = await fetch(new URL("my-wasm-pack-output/my_package_bg.wasm", import.meta.url));
 const wasmBytes = await wasmResponse.arrayBuffer();
 
 // now we can initialize wasm-bindgen-spawn

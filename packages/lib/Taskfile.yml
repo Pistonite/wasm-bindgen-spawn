@@ -6,6 +6,11 @@ includes:
     internal: true
     optional: true
 
+  dispatcher:
+    taskfile: ../dispatcher
+    dir: ../dispatcher
+    internal: true
+
 tasks:
   check:
     - task: cargo:clippy-all

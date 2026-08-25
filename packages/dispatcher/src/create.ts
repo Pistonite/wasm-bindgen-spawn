@@ -32,15 +32,17 @@ __return = (async () => {
             break;
         }
         case WBG_TARGET_WEB: {
-            // web target format is ESM, we need to create a blob url
-            // inside the worker (since not all implementation allow accessing
-            // blob url created by another worker
+            // web target format is ESM, we need to turn the raw source code
+            // into a format that can be imported.
             let workerInitArgsExpr: string;
             if (
                 // @ts-expect-error Window is not in libwebworker
                 typeof Window === "function" ||
                 typeof WorkerGlobalScope === "function"
             ) {
+                // for browsers, we can use blob URL. Note we need to let the worker itself
+                // create the blob url since it's not guaranteed that a worker can access
+                // blob urls created by another worker
                 const bgJsExpr = JSON.stringify(bg_js);
                 workerInitArgsExpr = `(async()=>{
 const bg=URL.createObjectURL(new Blob([${bgJsExpr}], {type:"text/javascript"}));
@@ -53,9 +55,10 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
                 // note: NodeJS/Deno works with both base64 and chatset=utf-8 data url,
                 // Bun does not work with utf-8, only base64.
                 //
+                // [2026-08-24 you can remove this comment if it has aged]
                 // Additionally Bun as of v1.3.14 cannot handle data urls that are too long.
                 // That is fixed in Bun v1.4.0
-                //
+
                 // @ts-expect-error Buffer global
                 const encoded = Buffer.from(bg_js).toString("base64");
                 const url = `data:text/javascript;base64,${encoded}`;
@@ -63,7 +66,7 @@ try{return await import(bg)}finally{URL.revokeObjectURL(bg)}
             }
             workerSource = `${WORKER_JS};_m(${workerInitArgsExpr})`;
             dispatcherSource = `${DISPATCHER_JS};_m(${workerInitArgsExpr})`;
-            // must use ES worker for the import expression
+            // must use ES worker for the `import` expression
             useESWorker = true;
             break;
         }

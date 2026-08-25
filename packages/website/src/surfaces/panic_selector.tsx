@@ -12,7 +12,7 @@ const PANIC_RUNTIME_DESCRIPTIONS: Record<PanicRuntime, string> = {
 
 // TODO: point this at doc website
 const PANIC_RUNTIME_DOCS: Partial<Record<PanicRuntime, string>> = {
-    unwind: "https://example.com/panic-unwind",
+    unwind: "https://wbgspawn.pistonite.dev/panic.html",
 };
 
 export const PanicRuntimeSelector: React.FC = () => {

@@ -1,8 +1,8 @@
-import type { RustType, WasmBindgen } from "./binding.gen.ts";
+import type { OpaqueWebAssemblyModule, RustType, WasmBindgen } from "./binding.gen.ts";
 
 export type WasmBindgenInitFn = (init: {
     memory: WebAssembly.Memory;
-    module: WebAssembly.Module;
+    module: OpaqueWebAssemblyModule | BufferSource;
 }) => void;
 export type WorkerInitArgs = WasmBindgen & { initSync: WasmBindgenInitFn };
 
@@ -16,8 +16,8 @@ export interface WorkerInitMessage {
     start: RustType<"*mut SignalSender">;
     /** memory for instantiating the wasm instance in this thread (worker) */
     memory: WebAssembly.Memory;
-    /** compiled module for instantiating the wasm instance in this thread (worker) */
-    wasm: WebAssembly.Module;
+    /** module for instantiating the wasm instance in this thread (worker) */
+    wasm: OpaqueWebAssemblyModule | BufferSource;
 }
 
 /** Message posted from the thread creator to the dispatcher for initialization */
@@ -30,8 +30,8 @@ export interface DispatcherInitMessage {
     script: string;
     /** memory for instantiating the wasm instance in this thread (dispatcher) */
     memory: WebAssembly.Memory;
-    /** compiled module for instantiating the wasm instance in this thread (dispatcher) */
-    wasm: WebAssembly.Module;
-    /** Create worker with type: module */
+    /** module for instantiating the wasm instance in this thread (dispatcher) */
+    wasm: OpaqueWebAssemblyModule | BufferSource;
+    /** Create worker with { type: module } */
     useESWorker: boolean;
 }

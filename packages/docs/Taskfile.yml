@@ -13,7 +13,7 @@ tasks:
     desc: Start mdbook in watch mode
     cmds:
       - rm -rf book
-      - shwoop book -w src --host -- mdbook build
+      - shwoop book -w src -p 9241 --host -- mdbook build
 
   build:
     desc: (Re-)build the book

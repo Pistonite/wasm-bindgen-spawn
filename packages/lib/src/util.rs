@@ -17,12 +17,12 @@ use std::pin::Pin;
 /// While wrapping a Rust async runtime such as tokio will work to drive pure-Rust futures,
 /// it will still not allow interop with the JS Event Loop.
 ///
-/// See https://github.com/Pistonite/wasm-bindgen-spawn/issues/7 for related discusstion
+/// See <https://github.com/Pistonite/wasm-bindgen-spawn/issues/7> for related discussion
 ///
 /// The only solution is for the entire thread's main function to be compiled as a future
 /// which can then be driven co-operatively by the JS Event Loop.
-/// This will also work for sync main functions - it will just need to be wrapped
-/// to return future::ready
+/// This will also work for sync main functions - they will just need to be wrapped
+/// to return `future::ready`
 ///
 /// ## Why does the future not need to be `Send`?
 /// If we add the trait bounds, the signature becomes
@@ -40,14 +40,14 @@ use std::pin::Pin;
 /// `FnOnce` wrapper - they can just take in a future from the caller. However, for a future
 /// to be `Send`, values that are not `Send` cannot be used across `await`s. This is because
 /// a `Send` future means the future can be sent to execute on any thread at any time, not just
-/// the beginning. This will cause major interoperability issue with JS.
+/// the beginning. This will cause major interoperability issues with JS.
 ///
 /// However, once the future is spawned, the future is only ever executed on the JS context it
 /// is spawned in - so it does not require `Send`. On the other hand, values captured by the
 /// thread are actually "sent" to that thread, so the `FnOnce` requires `Send`. Essentially,
 /// this guarantees:
 ///
-/// - No `JsValue` (or anything that is not `Send`) are passed from one thread to another.
+/// - No `JsValue` (or anything that is not `Send`) is passed from one thread to another.
 /// - Once the thread spawns, new `JsValue`s created on the current thread can be freely used
 ///   within the future.
 ///
@@ -64,17 +64,17 @@ use std::pin::Pin;
 /// - Now instead of pseudo code for `FnOnce` and `Future`, we put in the real, boxed form
 /// - The whole thing is wrapped in `AssertUnwindSafe`.
 ///
-/// The UnwindSafe trait does not have additional guarantees, it is only a warning to mark
-/// potentially-inconsistent state is not easily observed by caller.
+/// The `UnwindSafe` trait does not add additional guarantees; it is only a marker to indicate
+/// that potentially-inconsistent state is not easily observed by the caller.
 ///
 /// In the threading model, the `Send` trait requirement from spawn already ensures that any
-/// owned value is moved to the thread and not observable by the spawner, and shared value
-/// is guarded by types like `Mutex` that has other mechanism (i.e. poisoning) to observe panics.
+/// owned value is moved to the thread and not observable by the spawner, and shared values
+/// are guarded by types like `Mutex` that have other mechanisms (i.e. poisoning) to observe panics.
 /// Therefore we have a similar case to `std::thread::spawn` which also does not require
 /// `UnwindSafe`.
 ///
-/// The `AssertUnwindSafe` wrapper exists in the type to workaround `wasm_bindgen`'s limitation
-/// that anything crossing the JS-Rust boundary needs to be UnwindSafe when `panic=unwind`.
+/// The `AssertUnwindSafe` wrapper exists in the type to work around `wasm_bindgen`'s limitation
+/// that anything crossing the JS-Rust boundary needs to be `UnwindSafe` when `panic=unwind`.
 pub type ThreadProc =
     Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = Value> + 'static>> + Send + 'static>;
 // ThreadProc itself should just be a fat pointer
@@ -98,7 +98,6 @@ pub type DispatchReceiver = tokio::sync::mpsc::UnboundedReceiver<DispatchPayload
 pub type SignalSender = oneshot::Sender<()>;
 pub type SignalReceiver = oneshot::Receiver<()>;
 
-/// Error when joining a thread with a [`JoinHandle`]
 #[derive(Debug)]
 pub struct WorkerPanic {
     /// The payload of panic from a worker thread
@@ -115,7 +114,7 @@ pub struct Value {
     ptr: *mut (),
 }
 // Value is a temporary reference to the heap-allocated return value
-// of a thread. Since we are not touching the underlying value in anyway,
+// of a thread. Since we are not touching the underlying value in any way,
 // the raw pointer is just a number that is Send + Sync
 unsafe impl Send for Value {}
 unsafe impl Sync for Value {}
@@ -138,7 +137,7 @@ macro_rules! js_arg_vec {
         $(
             let $arg_name: $arg_type = $arg_rust;
         )*
-        let x: $ts_type_name = vec![ $(
+        let x: Vec<wasm_bindgen::JsValue>= vec![ $(
             $arg_name.into(),
         )* ];
         x
