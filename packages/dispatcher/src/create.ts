@@ -2,7 +2,7 @@ import { WBG_TARGET_NO_MODULES, WBG_TARGET_WEB, type ThreadCreatorArgs } from ".
 import { createJsBlobUrl, createWorker } from "./shared.ts";
 import type { DispatcherInitMessage } from "./types.ts";
 
-// this is what's received from Rust, see ThreadCreator::unready
+// this is what's received from Rust, see create_dispatcher() in Rust
 declare const ARGS: ThreadCreatorArgs;
 
 // these are injected by build script, see vite.config.ts

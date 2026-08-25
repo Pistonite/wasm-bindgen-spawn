@@ -17,6 +17,7 @@
 }
 
 .status-value {
+    color: var(--subtext0);
     font-family: var(--font-mono);
     font-weight: 600;
 }

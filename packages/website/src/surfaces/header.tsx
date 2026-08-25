@@ -14,6 +14,7 @@ export const Header: React.FC = () => {
                 <Link href="https://wbgspawn.pistonite.dev">Docs</Link>
                 <Link href={GITHUB_LINK}>GitHub</Link>
                 <StatusItem label="CrossOriginIsolated" ok={globalThis.crossOriginIsolated} />
+                <StatusItem label="Build" ok={import.meta.env.COMMIT.substring(0, 8)} />
             </div>
         </header>
     );

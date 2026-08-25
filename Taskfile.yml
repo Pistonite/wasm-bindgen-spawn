@@ -45,10 +45,23 @@ tasks:
     - task: test:fix
     - task: website:fix
     - cargo fmt
+
+  build:
+    desc: Ensure everything builds
+    cmds:
+      - task: build-test
+      - task: build-web
+      - task: build-doc
     
   build-doc:
     - task: docs:install
     - task: docs:build
+
+  build-test:
+    - task: test:build
+
+  build-web:
+    - task: website:build
 
   clean:
     - rm -rf target node_modules
