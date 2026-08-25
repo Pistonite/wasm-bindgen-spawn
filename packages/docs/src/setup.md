@@ -33,7 +33,7 @@ console.log(globalThis.crossOriginIsolated); // true
 
 ## Caveat about blocking operations
 Browsers [do not allow the main thread to be blocked by Atomics](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics#:~:text=(Most%20browsers%20will%20not%20allow%20wait()%20on%20the%20browser%27s%20main%20thread.)).
-Therefore, any blocking operations such as calling `.join()` on a thread's join handle, <!-- TODO: link `.join()` to docs.rs struct.JoinHandle.html#method.join once published -->
+Therefore, any blocking operations such as calling `.join()` on a thread's join handle,
 or `.lock()` on a `Mutex`, must be done in a Web Worker.
 
 Native engines typically do not have this restriction, although blocking
@@ -148,7 +148,8 @@ support status.
 
 ### `no-modules` and `web`
 If you use the `no-modules` or `web` target, no additional setup is needed on the
-`wasm-pack` side. Use `wasm_bindgen_spawn::init_bg_no_modules` or `wasm_bindgen_spawn::init_bg_web` <!-- TODO: link to docs.rs fn.init_bg_no_modules.html and fn.init_bg_web.html once published -->
+`wasm-pack` side. Use [`wasm_bindgen_spawn::init_bg_no_modules`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.init_bg_no_modules.html)
+or [`wasm_bindgen_spawn::init_bg_web`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.init_bg_web.html)
 accordingly:
 
 ```javascript

@@ -6,4 +6,5 @@ node_modules
 /eslint.config.js
 .prettierignore
 
+.wrangler/tmp
 public/rt-*
