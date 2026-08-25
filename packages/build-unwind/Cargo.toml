@@ -1,0 +1,27 @@
+[package]
+name = "build-unwind"
+description = "Meta files to build the example crate using panic=unwind"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+example.path = "../example"
+[features]
+no-wbg-module = ["example/no-wbg-module"]
+harness-broadcast = ["example/harness-broadcast"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "lib.rs"
+
+# needed for unwind
+[package.metadata.wasm-pack.profile.dev]
+wasm-opt = ['--enable-exception-handling']
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['--enable-exception-handling', '-O']
+[package.metadata.wasm-pack.profile.profiling]
+wasm-opt = ['--enable-exception-handling', '-O']
+

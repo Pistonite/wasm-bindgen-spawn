@@ -5,3 +5,5 @@ node_modules
 !/src/js/createDispatcher.min.js
 /mono-dev
 rust-toolchain
+.task
+.cert

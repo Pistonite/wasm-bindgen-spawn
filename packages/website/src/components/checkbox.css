@@ -1,0 +1,63 @@
+.checkbox {
+    display: inline-flex;
+    /* don't let the label wrap when the bar gets tight */
+    flex: none;
+    align-items: center;
+    padding: 5px 8px;
+    border: none;
+    border-radius: 6px;
+    background-color: transparent;
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    cursor: pointer;
+    gap: 8px;
+    transition: background-color var(--hover-transition);
+}
+
+.checkbox:hover {
+    background-color: var(--surface0);
+}
+
+.checkbox-box {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    /* match the text height exactly, border included */
+    box-sizing: border-box;
+    width: 0.9em;
+    height: 0.9em;
+    border: 1px solid var(--surface1);
+    border-radius: 2px;
+    background-color: var(--base);
+    color: var(--crust);
+    transition:
+        border-color var(--hover-transition),
+        background-color var(--hover-transition);
+}
+
+.checkbox:hover .checkbox-box {
+    border-color: var(--accent);
+}
+
+.checkbox[aria-checked="true"] .checkbox-box {
+    border-color: var(--accent);
+    background-color: var(--accent);
+}
+
+.checkbox-check {
+    width: 0.8em;
+    height: 0.8em;
+    opacity: 0;
+    transition: opacity var(--hover-transition);
+}
+
+.checkbox[aria-checked="true"] .checkbox-check {
+    opacity: 1;
+}
+
+.checkbox-label {
+    /* the default `normal` leaves uneven room above and below the glyphs */
+    line-height: 1;
+}

@@ -1,0 +1,160 @@
+use std::any::Any;
+use std::pin::Pin;
+
+/// ThreadProc is the "main function" for the thread
+///
+/// Without the wrapper types and trait bounds, it is essentially a:
+/// ```rust,ignore
+/// impl FnOnce() -> Future<Output=T>
+/// ```
+///
+/// .. which is a function executed on the worker thread that returns a value as a future.
+///
+/// ## Why does it return a future?
+/// If the thread's "main function" is sync Rust, the JS Event Loop is blocked
+/// for the duration the thread is running. This means the thread essentially cannot
+/// do anything async in JS (for example using js_sys/web_sys).
+/// While wrapping a Rust async runtime such as tokio will work to drive pure-Rust futures,
+/// it will still not allow interop with the JS Event Loop.
+///
+/// See <https://github.com/Pistonite/wasm-bindgen-spawn/issues/7> for related discussion
+///
+/// The only solution is for the entire thread's main function to be compiled as a future
+/// which can then be driven co-operatively by the JS Event Loop.
+/// This will also work for sync main functions - they will just need to be wrapped
+/// to return `future::ready`
+///
+/// ## Why does the future not need to be `Send`?
+/// If we add the trait bounds, the signature becomes
+/// ```rust,ignore
+/// impl FnOnce() -> ( Future<Output=T> + 'static ) + 'static where T: Send + 'static
+/// ```
+/// Note that both the `FnOnce` and the return value `T` need to be `Send`, but not the future
+/// itself.
+///
+/// This is because in `wasm_bindgen`, JS Values are references to objects on a "heap" managed
+/// by `wasm_bindgen`. As they are JS objects that are only valid in the current JS context,
+/// attempting to dereference them in another JS context will cause disaster.
+///
+/// If we require the future to be `Send`, the benefit is that async threads don't need the
+/// `FnOnce` wrapper - they can just take in a future from the caller. However, for a future
+/// to be `Send`, values that are not `Send` cannot be used across `await`s. This is because
+/// a `Send` future means the future can be sent to execute on any thread at any time, not just
+/// the beginning. This will cause major interoperability issues with JS.
+///
+/// However, once the future is spawned, the future is only ever executed on the JS context it
+/// is spawned in - so it does not require `Send`. On the other hand, values captured by the
+/// thread are actually "sent" to that thread, so the `FnOnce` requires `Send`. Essentially,
+/// this guarantees:
+///
+/// - No `JsValue` (or anything that is not `Send`) is passed from one thread to another.
+/// - Once the thread spawns, new `JsValue`s created on the current thread can be freely used
+///   within the future.
+///
+/// ## Unwind safety
+/// Now we can go a step further rewriting the type closer to its actual form
+/// ```rust,ignore
+/// type ThreadProc = AssertUnwindSafe<
+///     Box<
+///         dyn FnOnce -> Pin<Box<dyn Future<Output=T> + 'static>> + Send + 'static
+///     >
+/// >;
+/// ```
+/// The only differences are:
+/// - Now instead of pseudo code for `FnOnce` and `Future`, we put in the real, boxed form
+/// - The whole thing is wrapped in `AssertUnwindSafe`.
+///
+/// The `UnwindSafe` trait does not add additional guarantees; it is only a marker to indicate
+/// that potentially-inconsistent state is not easily observed by the caller.
+///
+/// In the threading model, the `Send` trait requirement from spawn already ensures that any
+/// owned value is moved to the thread and not observable by the spawner, and shared values
+/// are guarded by types like `Mutex` that have other mechanisms (i.e. poisoning) to observe panics.
+/// Therefore we have a similar case to `std::thread::spawn` which also does not require
+/// `UnwindSafe`.
+///
+/// The `AssertUnwindSafe` wrapper exists in the type to work around `wasm_bindgen`'s limitation
+/// that anything crossing the JS-Rust boundary needs to be `UnwindSafe` when `panic=unwind`.
+pub type ThreadProc =
+    Box<dyn FnOnce() -> Pin<Box<dyn Future<Output = Value> + 'static>> + Send + 'static>;
+// ThreadProc itself should just be a fat pointer
+static_assertions::assert_eq_size!(ThreadProc, [*mut (); 2]);
+
+// value channels are used to send thread return values.
+// if one thread panics, the inconsistent state is already
+// not easily observable by other threads (see _worker_main in binding.rs)
+// so we can assert unwind safety here
+pub type WorkerResult = Result<Value, WorkerPanic>;
+pub type ValueSender = oneshot::Sender<WorkerResult>;
+pub type ValueReceiver = oneshot::Receiver<WorkerResult>;
+pub type ValueReceiverAsync = oneshot::AsyncReceiver<WorkerResult>;
+
+// the thread dispatch payload is the main function and the channel to send
+// the result back
+pub type DispatchPayload = (ThreadProc, ValueSender);
+pub type DispatchSender = tokio::sync::mpsc::UnboundedSender<DispatchPayload>;
+pub type DispatchReceiver = tokio::sync::mpsc::UnboundedReceiver<DispatchPayload>;
+
+pub type SignalSender = oneshot::Sender<()>;
+pub type SignalReceiver = oneshot::Receiver<()>;
+
+#[derive(Debug)]
+pub struct WorkerPanic {
+    /// The payload of panic from a worker thread
+    ///
+    /// In `panic=unwind`, there can still be [hard aborts](https://wasm-bindgen.github.io/wasm-bindgen/reference/catch-unwind.html#hard-aborts),
+    /// that will have a similar effect as `panic=abort`. In those cases,
+    /// the error will be propagated to JS as an exception, and `None`
+    /// will be sent to the thread's join handle
+    pub payload: Option<Box<dyn Any + Send + 'static>>,
+}
+
+/// Wrapper for a heap allocated value
+pub struct Value {
+    ptr: *mut (),
+}
+// Value is a temporary reference to the heap-allocated return value
+// of a thread. Since we are not touching the underlying value in any way,
+// the raw pointer is just a number that is Send + Sync
+unsafe impl Send for Value {}
+unsafe impl Sync for Value {}
+impl<T> From<Box<T>> for Value {
+    fn from(value: Box<T>) -> Self {
+        Self {
+            ptr: Box::into_raw(value) as *mut (),
+        }
+    }
+}
+impl Value {
+    pub unsafe fn into_box_unchecked<T>(self) -> Box<T> {
+        unsafe { Box::from_raw(self.ptr as *mut T) }
+    }
+}
+
+/// Helper to generate a binding
+macro_rules! js_arg_vec {
+    ([ $($arg_name:ident : $arg_type:ty = $arg_rust:expr),* $(,)? ] as $ts_type_name:ident) => {{
+        $(
+            let $arg_name: $arg_type = $arg_rust;
+        )*
+        let x: Vec<wasm_bindgen::JsValue>= vec![ $(
+            $arg_name.into(),
+        )* ];
+        x
+    }};
+}
+pub(crate) use js_arg_vec;
+
+macro_rules! js_type {
+    ($($arg:tt)*) => {
+        wasm_bindgen::JsValue
+    };
+}
+pub(crate) use js_type;
+
+macro_rules! raw_ptr_type {
+    ($($arg:tt)*) => {
+        *mut ()
+    };
+}
+pub(crate) use raw_ptr_type;

@@ -1,31 +1,19 @@
-[package]
-name = "wasm-bindgen-spawn"
-version = "0.0.5"
-edition = "2024"
-description = "Web Worker Multithreading library for wasm-bindgen the uses shared memory"
-repository = "https://github.com/Pistonite/wasm-bindgen-spawn"
-license = "MIT"
-authors = ["Pistonight <pistonknight@outlook.com>"]
-keywords = ["WASM", "threads", "atomics", "wasm-bindgen", "shared-memory"]
-categories = ["web-programming", "wasm"]
-include = [
-    "/.cargo/config.toml",
-    "/.gitignore",
-    "src/js/createDispatcher.min.js",
-    "src/**/*.rs",
-    "Cargo.toml",
-    "/LICENSE",
-    "/README.md",
+[workspace]
+resolver = "2"
+members = [
+    "packages/example",
+    "packages/lib",
 ]
 
-[dependencies]
-js-sys = "0.3.83"
-oneshot = { version = "0.1.11", default-features = false, features = ["std"] }
-static_assertions = "1.1.0"
-thiserror = "2.0.17"
-wasm-bindgen = "0.2.106"
-wasm-bindgen-futures = { version = "0.4.56", optional = true }
+[workspace.dependencies]
+# If versions are changed please also update docs/src/support.md
+wasm-bindgen = "0.2.127"
+js-sys = "0.3.104"
 
-[features]
-default = ["async"]
-async = ["wasm-bindgen-futures"]
+
+anyhow = "1.0.104"
+console_error_panic_hook = "0.1.7"
+oneshot = { version = "0.2.1", default-features = false }
+tokio = "1.53.1"
+static_assertions = "1.1.0"
+thiserror = "2.0.20"

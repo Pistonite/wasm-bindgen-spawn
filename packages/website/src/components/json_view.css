@@ -1,0 +1,56 @@
+.json-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* as tall as the row's line box, so the whole line height is clickable */
+    width: 1.5em;
+    height: 1.5em;
+    /* cancels that height for line layout, so the row doesn't grow around it */
+    margin-block: -0.25em;
+    margin-right: 2px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--subtext0);
+    vertical-align: middle;
+    cursor: pointer;
+    transition:
+        color var(--hover-transition),
+        background-color var(--hover-transition);
+}
+
+.json-toggle:hover {
+    background-color: var(--surface0);
+    color: var(--accent);
+}
+
+.json-toggle-icon {
+    width: 12px;
+    height: 12px;
+    transition: transform var(--hover-transition);
+}
+
+.json-toggle[aria-expanded="true"] .json-toggle-icon {
+    transform: rotate(90deg);
+}
+
+.json-key {
+    color: var(--lavender);
+}
+
+.json-string {
+    color: var(--green);
+}
+
+.json-number {
+    color: var(--peach);
+}
+
+.json-literal {
+    color: var(--peach);
+}
+
+.json-punct {
+    color: var(--overlay0);
+}

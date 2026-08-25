@@ -1,0 +1,15 @@
+.example-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding-right: 4px;
+    overflow-y: auto;
+    gap: 6px;
+}
+
+.example-loading {
+    margin: 0;
+    color: var(--subtext0);
+    font-style: italic;
+}

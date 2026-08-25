@@ -1,43 +1,73 @@
 version: '3'
 
 includes:
-  example:
-    aliases: [ex]
-    taskfile: ./example
-    dir: ./example
+  common:
+    taskfile: ./node_modules/mono-dev/task/common.yaml
+    flatten: true
+    optional: true
 
   cargo:
-    taskfile: ./mono-dev/task/cargo.yaml
+    taskfile: ./node_modules/mono-dev/task/cargo.yaml
     internal: true
     optional: true
+
+  disp:    { taskfile: packages/dispatcher, dir: packages/dispatcher, internal: true }
+  example: { taskfile: packages/example,    dir: packages/example,    internal: true }
+  lib:     { taskfile: packages/lib,        dir: packages/lib,        internal: true }
+  test:    { taskfile: packages/test,       dir: packages/test,       internal: true }
+  website: { taskfile: packages/website,    dir: packages/website,    internal: true }
+  docs:    { taskfile: packages/docs,       dir: packages/docs,       internal: true }
+    
 
 tasks:
   install-cargo-extra-tools:
     aliases: [icets]
     cmds:
-      - cargo install txtpp
-
+      # requires edge wasm-pack for a newer version of binaryen
+      - cargo install wasm-pack --git https://github.com/wasm-bindgen/wasm-pack --branch master
+      - cargo binstall shwoop mdbook
   install:
     cmds:
-      - rm -rf mono-dev
-      - git clone https://github.com/Pistonight/mono-dev --depth 1
-      - echo "nightly" > example/rust-toolchain
+      - pnpm install
+      - task: docs:install
       - echo "nightly" > rust-toolchain
 
-  build:
-    desc: Incrementally dev build
-    cmds:
-      - txtpp src/js/createDispatcher.min.js
-      - cd example && pnpm run wasm
-
   check:
-    desc: Check for issues
-    cmds:
-      - task: cargo:clippy-all
-      - task: cargo:fmt-check
+    - task: disp:check
+    - task: disp:build
+    - task: lib:check
+    - task: example:check
+    - task: test:check
+    - task: website:check
 
   fix:
-    desc: Fix issues
+    - task: disp:fix
+    - task: test:fix
+    - task: website:fix
+    - cargo fmt
+
+  build:
+    desc: Ensure everything builds
     cmds:
-      - task: cargo:fmt-fix
-      - txtpp src -r
+      - task: build-test
+      - task: build-web
+      - task: build-doc
+    
+  build-doc:
+    - task: docs:install
+    - task: docs:build
+
+  build-test:
+    - task: test:build
+
+  build-web:
+    - task: website:build
+
+  clean:
+    - rm -rf target node_modules
+    - rm -rf packages/build-*/target
+    - rm -rf packages/dispatcher/node_modules packages/dispatcher/.task
+    - rm -rf packages/dispatcher/node_modules packages/dispatcher/.task
+    - rm -rf packages/lib/.task packages/lib/target
+    - rm -rf packages/test/.task packages/test/target packages/test/node_modules
+    - rm -rf packages/website/.task packages/website/dist packages/website/node_modules

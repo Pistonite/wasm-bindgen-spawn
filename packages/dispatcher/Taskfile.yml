@@ -1,0 +1,25 @@
+version: '3'
+
+includes:
+  ecma:
+    taskfile: ./node_modules/mono-dev/task/ecma.yaml
+    internal: true
+    optional: true
+
+tasks:
+  check:
+    - silent: true
+      cmd: echo "checking debug is disabled"; grep "BUILD_DEBUG = false" vite.config.ts
+    - node build.ts
+    - task: ecma:check
+  fix:
+    - task: ecma:fix
+  build:
+    sources:
+      - '**/*'
+      - ../lib/src/binding.rs
+      - ../../pnpm-*
+      - ../../package.json
+    cmds:
+      - node build.ts
+      - task: ecma:lib-build

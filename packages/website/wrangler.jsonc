@@ -1,0 +1,13 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "wbgspawn",
+    "compatibility_date": "2026-08-20",
+    "observability": {
+        "enabled": true,
+    },
+    "preview_urls": false,
+    "workers_dev": false,
+    "assets": {
+        "directory": "dist",
+    },
+}

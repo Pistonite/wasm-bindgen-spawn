@@ -1,0 +1,16 @@
+target
+Cargo.lock
+*_gen.d.ts
+*.gen.ts
+node_modules
+/dist
+/tsconfig*.json
+/eslint.config.js
+.prettierignore
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

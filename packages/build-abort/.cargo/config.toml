@@ -1,0 +1,19 @@
+# see https://wbgspawn.pistonite.dev/setup.html#rust-and-cargo-setup
+[env]
+WASM_BINDGEN_USE_JS_SYS="1"
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "-Ctarget-feature=+atomics",
+
+    "-Clink-args=--shared-memory",
+    "-Clink-args=--import-memory",
+    "-Clink-args=--max-memory=1073741824",
+    "-Clink-args=--export=__wasm_init_tls",
+    "-Clink-args=--export=__tls_size",
+    "-Clink-args=--export=__tls_align",
+    "-Clink-args=--export=__tls_base",
+    "-Clink-args=--export=__heap_base",
+]
+[unstable]
+build-std = ["panic_abort", "std"]

@@ -1,0 +1,70 @@
+.console {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+
+.console-bar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--surface0);
+    background-color: var(--mantle);
+    gap: 10px;
+}
+
+.console-count {
+    flex: 1;
+    color: var(--overlay0);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.console-output {
+    flex: 1;
+    padding: 8px 0;
+    background-color: var(--crust);
+    overflow-y: auto;
+}
+
+.console-running {
+    margin: 0;
+    padding: 3px 16px;
+    color: var(--subtext0);
+    font-family: var(--font-mono);
+    font-style: italic;
+}
+
+/* the dots are real text, revealed one character at a time */
+.console-running-dots {
+    display: inline-block;
+    width: 3ch;
+    overflow: hidden;
+    vertical-align: bottom;
+    animation: console-running-dots 1.2s steps(4, jump-none) infinite;
+}
+
+@keyframes console-running-dots {
+    from {
+        width: 0;
+    }
+    to {
+        width: 3ch;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .console-running-dots {
+        animation: none;
+    }
+}
+
+.console-empty {
+    margin: 0;
+    padding: 8px 16px;
+    color: var(--subtext0);
+    font-style: italic;
+}

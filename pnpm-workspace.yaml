@@ -1,4 +1,22 @@
+minimumReleaseAgeExclude:
+  - '@pistonite/*'
+
+allowBuilds:
+  esbuild: true
+  workerd: true
+
 packages:
-  - example
-onlyBuiltDependencies:
-  - esbuild
+  - packages/dispatcher
+  - packages/test
+  - packages/website
+
+catalog:
+  mono-dev: github:pistonight/mono-dev#dist
+  '@types/node': ^24
+  '@playwright/test': "^1.62.1"
+  '@types/react': ^19.2.18
+  '@types/react-dom': ^19.2.4
+  react: ^19.2.8
+  react-dom: ^19.2.8
+  zustand: ^5.0.15
+  wrangler: ^4.125.0

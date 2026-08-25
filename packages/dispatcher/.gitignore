@@ -1,0 +1,6 @@
+node_modules
+/dist
+/tsconfig*.json
+/eslint.config.js
+.prettierignore
+*.gen.ts

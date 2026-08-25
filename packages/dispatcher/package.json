@@ -1,0 +1,23 @@
+{
+    "name": "wasm-bindgen-spawn-dispatcher-js",
+    "version": "0.0.0",
+    "type": "module",
+    "private": true,
+    "description": "JS-side implementation for wasm-bindgen-spawn",
+    "license": "MIT",
+    "dependencies": {
+        "mono-dev": "catalog:",
+        "@types/node": "catalog:"
+    },
+    "exports": {
+        "./create": "./src/create.ts",
+        "./dispatcher": "./src/dispatcher.ts",
+        "./worker": "./src/worker.ts"
+    },
+    "pistonight/mono-dev": {
+        "lib": true,
+        "sourcemap": false,
+        "publish": false
+    },
+    "imports": {}
+}

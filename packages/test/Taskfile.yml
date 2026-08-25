@@ -1,0 +1,84 @@
+version: '3'
+
+includes:
+  ecma:
+    taskfile: ./node_modules/mono-dev/task/ecma.yaml
+    internal: true
+    optional: true
+    
+  dispatcher:
+    taskfile: ../dispatcher
+    dir: ../dispatcher
+    internal: true
+
+
+tasks:
+  build:
+    desc: Build files needed for tests
+    cmds:
+      - task: dispatcher:build
+      - node src/build.ts
+
+  check:
+    - task: dispatcher:build
+    - node src/build.ts --minimum
+    - task: ecma:check
+  fix:
+    - task: ecma:fix
+
+  test:
+    - task: build
+    - task: run-native-all
+    - task: run-browser-all
+    - task: run-assertion-all
+
+  run:
+    - task: run-native
+    - task: run-browser
+    - task: run-assertion
+
+  run-native:
+    desc: Run native targets using node/bun/deno
+    cmds:
+      - node src/native/index.ts {{.CLI_ARGS}}
+  run-native-all:
+    internal: true
+    cmds:
+      - node src/native/index.ts
+
+  run-browser:
+    desc: Run browser targets using playwright
+    cmds:
+      - node src/playwright/index.ts {{.CLI_ARGS}}
+  run-browser-all:
+    internal: true
+    cmds:
+      - node src/playwright/index.ts
+
+  build-image:
+    desc: Rebuild the playwright container image
+    cmds:
+      - node src/playwright/index.ts --build-image
+  dev-http:
+    cmds:
+      - node src/playwright/index.ts --http-only --https
+
+  run-assertion:
+    aliases: [assert]
+    desc: Run assertions on the logs produced by the tests
+    cmds:
+      - node src/tests/index.ts {{.CLI_ARGS}}
+
+  run-assertion-all:
+    cmds:
+      - node src/tests/index.ts
+
+  log:
+    desc: View log dump
+    cmds:
+      - node src/log_dump.ts {{.CLI_ARGS}}
+
+  clean:
+    - rm -rf target build-unwind/target build-abort/target
+    - docker container prune -f
+    - docker image prune -a -f

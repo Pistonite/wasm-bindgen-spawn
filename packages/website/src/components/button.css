@@ -1,0 +1,27 @@
+.button {
+    /* don't let buttons squash when a flex column of them overflows */
+    flex: none;
+    padding: 5px 12px;
+    border: 1px solid var(--surface1);
+    border-radius: 6px;
+    background-color: var(--surface0);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color var(--hover-transition),
+        background-color var(--hover-transition);
+}
+
+/* roomier, since these stack in a list rather than sitting in a toolbar */
+.button-code {
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+}
+
+.button:hover {
+    border-color: var(--accent);
+    background-color: var(--surface1);
+}

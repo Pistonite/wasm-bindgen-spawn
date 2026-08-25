@@ -1,0 +1,33 @@
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    gap: 8px;
+    transition: background-color var(--hover-transition);
+}
+
+.radio-option:hover {
+    background-color: var(--surface0);
+}
+
+.radio-option input {
+    accent-color: var(--accent);
+    margin: 0;
+    cursor: pointer;
+}
+
+.radio-option input[value="unwind"] {
+    accent-color: var(--green);
+}
+
+.radio-option input[value="abort"] {
+    accent-color: var(--red);
+}
