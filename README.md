@@ -27,7 +27,7 @@ The [Playground](https://wbgspawn-playground.pistonite.dev) has runnable example
 ## Documentation
 - For setup, tutorial, and concepts, please refer to [the book](https://wbgspawn.pistonite.dev).
 - For technical reference, refer to [API documentation on docs.rs](https://docs.rs/wasm-bindgen-spawn).
-- There is also a [blog post](https://wbgspawn.psitonite.dev/design.html) I wrote when I first made this library
+- There is also a [blog post](https://wbgspawn.pistonite.dev/design.html) I wrote when I first made this library
 
 ## Contributing
 Contribution is accepted. Please refer to the [Contribution Guidelines](https://wbgspawn.pistonite.dev/contributing.html)
