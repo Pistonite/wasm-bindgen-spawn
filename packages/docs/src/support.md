@@ -9,7 +9,7 @@
 > See the source-of-truth for cargo configs [Here](./setup.md#rust-and-cargo-setup)
 
 > [!NOTE]
-> This page was last updated on: `2026-08-23`
+> This page was last updated on: `2026-08-24`
 
 ## Toolchain minimum versions
 
@@ -39,7 +39,7 @@ You can use the [Playground](https://wbgspawn-playground.pistonite.dev) to run t
 - Chromium `>=151.0`
 - Firefox `>=153.0`
 - Webkit `>=revision 2092`
-- NodeJS `>=24.15` (latest tested `24.19.0`)
+- NodeJS `>=24.15` (latest tested `24.19.0`, `26.7.0`)
   - Earlier versions may work through the `--experimental-wasm-exnref` flag
 - Deno `>=2.3.2` (latest tested `2.9.5`)
   - *Note that Deno has an issue where it takes ~5x longer to spin up a worker compared to other engines.

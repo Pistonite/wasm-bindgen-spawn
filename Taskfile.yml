@@ -49,3 +49,12 @@ tasks:
   build-doc:
     - task: docs:install
     - task: docs:build
+
+  clean:
+    - rm -rf target node_modules
+    - rm -rf packages/build-*/target
+    - rm -rf packages/dispatcher/node_modules packages/dispatcher/.task
+    - rm -rf packages/dispatcher/node_modules packages/dispatcher/.task
+    - rm -rf packages/lib/.task packages/lib/target
+    - rm -rf packages/test/.task packages/test/target packages/test/node_modules
+    - rm -rf packages/website/.task packages/website/dist packages/website/node_modules
