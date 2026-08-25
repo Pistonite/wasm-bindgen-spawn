@@ -81,7 +81,7 @@ The difference is the panic payload:
 
 ## Async panics
 > [!NOTE]
-> Please refer to [Working with Async code](./async.md) for the `spawn_async` API <!-- TODO: link `spawn_async` to docs.rs fn.spawn_async.html once published -->
+> Please refer to [Working with Async code](./async.md) for the [`spawn_async`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.spawn_async.html) API.
 
 When an asynchronous thread panics, it is trickier to deal with. To see why, let's consider
 the following example:
@@ -137,8 +137,10 @@ Let's trace the process to see exactly how this works:
 > but it only creates a `PanicError` from it and throws it to JS. This is the right thing
 > to do in the `js_sys` level, but it does not help here.
 
-While there is not a single "right" behavior for async panics, this library took inspiration from `tokio`,
-whose runtime captures any async panic and reports it to the `JoinHandle` for the task. <!-- TODO: link `JoinHandle` to docs.rs struct.JoinHandle.html once published; note the ones under "detached tasks" are std's and Tokio's, do not link those -->
+While there is not a single "right" behavior for async panics, this library took inspiration from [`tokio`](https://tokio.rs/), a popular Rust async runtime.
+In `tokio`, the async runtime captures any async panic and reports it to the [`JoinHandle`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.JoinHandle.html)
+for the task.
+
 This library does the same:
 - A thread-local "worker runtime" is installed to allow notifying the join handle and terminating the worker anywhere
   within Rust.
@@ -200,7 +202,8 @@ What happens in this case depends on the runtime:
   If other futures continue to execute Rust code when `panic=abort`, it's not safe
   and you may observe other weird errors/aborts.
 
-To mitigate this, you should use `wasm_bindgen_spawn::spawn_local` in worker threads. <!-- TODO: link `spawn_local` to docs.rs fn.spawn_local.html once published -->
+To mitigate this, you should use [`wasm_bindgen_spawn::spawn_local`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.spawn_local.html)
+in worker threads, instead of the `js_sys` one.
 This spawns the future wrapped with the hooks into the "worker runtime" described
 above, and will reliably terminate the worker and notify the join handle when
 panics are detected.

@@ -21,4 +21,9 @@ tasks:
     - task: dispatcher:build
     - task: cargo:watch-serve-doc
 
+  package:
+    - cargo package --list --allow-dirty
+
+  publish:
+    - cargo publish --allow-dirty
 

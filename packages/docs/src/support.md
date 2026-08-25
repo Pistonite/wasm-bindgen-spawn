@@ -93,7 +93,7 @@ of this library and expect behavior similar to a tier-1 Rust target.
 > [!NOTE]
 > Legend:
 > - ✅ Supported.
-> - 🟢 Not supported but a similar API is provided by this crate (for example `spawn`). <!-- TODO: link `spawn` to docs.rs fn.spawn.html once published -->
+> - 🟢 Not supported but a similar API is provided by this crate (for example [`spawn`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.spawn.html)).
 > - ⚠️ Not tested but likely to be supported.
 > - ❓ Not tested and unsure if supported.
 > - ⛔ Unsupported.
@@ -130,6 +130,6 @@ Notes:
 - <sup>1</sup>: Atomics are part of the WASM threading proposal.
 - <sup>2</sup>: Poisoning works when `panic=unwind`.
 - <sup>3</sup>: A similar API might be added to this crate in the future.
-- <sup>4</sup>: Use `navigator.hardwareConcurrency`.
-- <sup>5</sup>: To run the thread co-operatively with the JS event loop, use `spawn_async`. <!-- TODO: link `spawn_async` to docs.rs fn.spawn_async.html once published -->
+- <sup>4</sup>: Use [`navigator.hardwareConcurrency`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency).
+- <sup>5</sup>: Does nothing. To run the thread co-operatively with the JS event loop, use [`spawn_async`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.spawn_async.html).
 

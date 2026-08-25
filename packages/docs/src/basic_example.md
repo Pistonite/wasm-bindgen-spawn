@@ -14,7 +14,8 @@ without the need to rely on the JS event loop. You may read more about this desi
 in the [Design Blog](./design.md)
 
 The thread dispatcher is initialized in 2 phases:
-1. Call one of the `init_bg_*` functions to create an instance of `ThreadDispatcherInit`. <!-- TODO: link `ThreadDispatcherInit` to docs.rs struct.ThreadDispatcherInit.html once published; `init_bg_*` is a wildcard, link fn.init_bg_no_modules.html and fn.init_bg_web.html or leave as-is -->
+1. Call one of the `init_bg_*` functions to create an instance of 
+   [`ThreadDispatcherInit`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.ThreadDispatcherInit.html).
 2. Use the JS Event Loop to wait for the thread dispatcher to be ready.
    The `spawn()` API only works after the thread dispatcher is `await`-ed to be ready;
    this prevents dead locks from trying to join a thread before the dispatcher is ready.
@@ -37,9 +38,7 @@ let init = wasm_bindgen_spawn::init_bg_web(bg_script, wasm_bindgen::module());
 
 Next, create the dispatcher and wait for it to be ready.
 
-You can use the async init function if you use `wasm-bindgen-futures`, or `js_sys::futures` (enabled with either the
-`WASM_BINDGEN_USE_JS_SYS=1` environment variable or the `--cfg=wasm_bindgen_use_js_sys`
-cfg flag).
+
 ```rust
 use wasm_bindgen::prelude::*;
 
@@ -54,30 +53,34 @@ Then call and await this function in JS (see [Wasm-pack Target Setup](./setup.md
 await wasm_bindgen.init_thread_dispatcher(bindgenScript)
 ```
 
-If you don't want to add additional dependencies other than `wasm-bindgen`,
-you can use the `create_dispatcher_promise()` API instead, which uses `js_sys::futures` <!-- TODO: link `create_dispatcher_promise()` to docs.rs struct.ThreadDispatcherInit.html#method.create_dispatcher_promise once published -->
-internally to drive the dispatcher future with the JS event loop.
-
-```rust
-use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
-pub fn init_thread_dispatcher(bg_script: JsValue) -> JsValue /* Promise */{
-//  ^^ note this function is not async in rust
-    wasm_bindgen_spawn::init_bg_no_modules(bg_script, wasm_bindgen::module())
-        .create_dispatcher_promise().into()
-}
-```
-The JS side is identical
-```javascript
-await wasm_bindgen.init_thread_dispatcher(bindgenScript)
-```
-
 Now the thread dispatcher is ready and you can spawn some threads!
 
+> [!TIP]
+> You can use the async init function if you use `wasm-bindgen-futures`, or `js_sys::futures` (enabled with either the
+> `WASM_BINDGEN_USE_JS_SYS=1` environment variable or the `--cfg=wasm_bindgen_use_js_sys` cfg flag).
+> 
+> If you don't want to add additional dependencies other than `wasm-bindgen`,
+> you can use the [`create_dispatcher_promise()`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.ThreadDispatcherInit.html#method.create_dispatcher_promise)
+> API instead, which uses `js_sys::futures` internally to drive the dispatcher future with the JS event loop.
+> ```rust
+> use wasm_bindgen::prelude::*;
+> 
+> #[wasm_bindgen]
+> pub fn init_thread_dispatcher(bg_script: JsValue) -> JsValue /* Promise */{
+> //  ^^ note this function is not async in rust
+>     wasm_bindgen_spawn::init_bg_no_modules(bg_script, wasm_bindgen::module())
+>         .create_dispatcher_promise().into()
+> }
+> ```
+> The JS side is identical
+> ```javascript
+> await wasm_bindgen.init_thread_dispatcher(bindgenScript)
+> ```
+
+
 ## Spawn and join
-Spawn a thread with `wasm_bindgen_spawn::spawn()`, which has an identical signature <!-- TODO: link `spawn()` to docs.rs fn.spawn.html once published -->
-to `std::thread::spawn`:
+Spawn a thread with [`wasm_bindgen_spawn::spawn()`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.spawn.html),
+which has an identical signature to `std::thread::spawn`:
 
 ```rust
 let thread = wasm_bindgen_spawn::spawn(move || {
@@ -92,7 +95,8 @@ assert_eq!(output, 1);
 On native engines such as NodeJS, Deno and Bun, a worker that stays alive
 will keep the whole program running. Since the thread dispatcher
 is itself a worker, you may need to manually terminate it by calling
-`terminate_dispatcher()` during program shutdown. <!-- TODO: link `terminate_dispatcher()` to docs.rs fn.terminate_dispatcher.html once published -->
+[`terminate_dispatcher()`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.terminate_dispatcher.html)
+during program shutdown.
 
 ```rust
 use wasm_bindgen::prelude::*;
@@ -108,8 +112,8 @@ wasm_bindgen.uninit();
 ```
 
 ## Handle async code
-You can use `spawn_async` to spawn a future as the "main function" of the thread. <!-- TODO: link `spawn_async` to docs.rs fn.spawn_async.html once published -->
-The future is driven co-operatively with the JS event loop.
+You can use [`wasm_bindgen_spawn::spawn_async`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.spawn_async.html)
+to spawn a future as the "main function" of the thread. The future is driven co-operatively with the JS event loop.
 
 ```rust
 let thread = wasm_bindgen_spawn::spawn_async(move || async move {
@@ -135,7 +139,8 @@ assert_eq!(output, 1);
 > the [Working with Async code](./async.md) chapter.
 
 ## Non-blocking join
-Similar to the `JoinHandle` in the Rust standard library, the `JoinHandle` in this library <!-- TODO: link the second `JoinHandle` (this crate's) to docs.rs struct.JoinHandle.html once published; the first is std's -->
+Similar to the [`JoinHandle`](https://doc.rust-lang.org/std/thread/struct.JoinHandle.html) in the Rust standard library,
+the [`wasm_bindgen_spawn::JoinHandle`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/struct.JoinHandle.html)
 provides ways to perform a non-blocking join of the thread.
 
 ```rust

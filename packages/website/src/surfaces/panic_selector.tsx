@@ -10,7 +10,6 @@ const PANIC_RUNTIME_DESCRIPTIONS: Record<PanicRuntime, string> = {
     abort: "Panics invoke unreachable and cause JS exceptions, making it not safe to continue using the WASM instance that panicked.",
 };
 
-// TODO: point this at doc website
 const PANIC_RUNTIME_DOCS: Partial<Record<PanicRuntime, string>> = {
     unwind: "https://wbgspawn.pistonite.dev/panic.html",
 };

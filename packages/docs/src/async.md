@@ -3,7 +3,8 @@
 > [!IMPORTANT]
 > 
 > This chapter covers caveats when spawning a future as a thread using the 
-> `spawn_async` API in this library. It is not a tutorial for async Rust. <!-- TODO: link `spawn_async` to docs.rs fn.spawn_async.html once published -->
+> [`spawn_async`](https://docs.rs/wasm-bindgen-spawn/latest/wasm_bindgen_spawn/fn.spawn_async.html)
+> API in this library. It is not a tutorial for async Rust.
 > Basic understanding of async Rust is required.
 
 > [!CAUTION]

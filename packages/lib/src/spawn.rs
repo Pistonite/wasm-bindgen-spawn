@@ -14,6 +14,7 @@ use crate::util::{
 };
 
 /// Start building a thread dispatcher using the bindgen script from the "no-modules" target.
+///
 /// See [`ThreadDispatcherInit`]
 pub fn init_bg_no_modules(bg_js: JsValue, wasm_module: JsValue) -> ThreadDispatcherInit {
     ThreadDispatcherInit {
@@ -23,6 +24,7 @@ pub fn init_bg_no_modules(bg_js: JsValue, wasm_module: JsValue) -> ThreadDispatc
     }
 }
 /// Start building a thread dispatcher using the bindgen script from the "web" target.
+///
 /// See [`ThreadDispatcherInit`]
 pub fn init_bg_web(bg_js: JsValue, wasm_module: JsValue) -> ThreadDispatcherInit {
     ThreadDispatcherInit {
